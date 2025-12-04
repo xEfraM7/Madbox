@@ -1,16 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,29 +21,14 @@ interface PaymentFormModalProps {
 }
 
 export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormModalProps) {
-  const [formData, setFormData] = useState({
-    user: "",
-    amount: "",
-    method: "",
-    status: "paid",
-  })
+  const [formData, setFormData] = useState({ user: "", amount: "", method: "", status: "paid" })
   const [date, setDate] = useState<Date | undefined>(new Date())
 
   useEffect(() => {
     if (payment) {
-      setFormData({
-        user: payment.user || "",
-        amount: payment.amount?.toString() || "",
-        method: payment.method || "",
-        status: payment.status || "paid",
-      })
+      setFormData({ user: payment.user || "", amount: payment.amount?.toString() || "", method: payment.method || "", status: payment.status || "paid" })
     } else {
-      setFormData({
-        user: "",
-        amount: "",
-        method: "",
-        status: "paid",
-      })
+      setFormData({ user: "", amount: "", method: "", status: "paid" })
       setDate(new Date())
     }
   }, [payment, open])
@@ -67,18 +44,14 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{payment ? "Editar Pago" : "Registrar Nuevo Pago"}</DialogTitle>
-          <DialogDescription>
-            {payment ? "Modifica la información del pago" : "Registra un nuevo pago de mensualidad"}
-          </DialogDescription>
+          <DialogDescription>{payment ? "Modifica la información del pago" : "Registra un nuevo pago de mensualidad"}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="user">Usuario</Label>
               <Select value={formData.user} onValueChange={(value) => setFormData({ ...formData, user: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un usuario" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecciona un usuario" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Carlos Rodríguez">Carlos Rodríguez</SelectItem>
                   <SelectItem value="María García">María García</SelectItem>
@@ -91,22 +64,12 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="amount">Monto</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  placeholder="0.00"
-                  required
-                />
+                <Input id="amount" type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} placeholder="0.00" required />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="method">Método de pago</Label>
                 <Select value={formData.method} onValueChange={(value) => setFormData({ ...formData, method: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona método" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecciona método" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Efectivo">Efectivo</SelectItem>
                     <SelectItem value="Tarjeta">Tarjeta</SelectItem>
@@ -119,10 +82,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
               <Label>Fecha de pago</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn("justify-start text-left font-normal", !date && "text-muted-foreground")}
-                  >
+                  <Button variant="outline" className={cn("justify-start text-left font-normal", !date && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "PPP", { locale: es }) : "Selecciona una fecha"}
                   </Button>
@@ -135,9 +95,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
             <div className="grid gap-2">
               <Label htmlFor="status">Estado</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona estado" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecciona estado" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="paid">Pagado</SelectItem>
                   <SelectItem value="pending">Pendiente</SelectItem>
@@ -147,9 +105,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit">{payment ? "Guardar cambios" : "Registrar pago"}</Button>
           </DialogFooter>
         </form>
