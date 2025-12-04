@@ -2,21 +2,21 @@
 
 import type React from "react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dumbbell, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { signIn } from "@/lib/actions/auth"
 
 interface FormErrors {
   email?: string
   password?: string
+  general?: string
 }
 
 export default function LoginMainComponent() {
-  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errors, setErrors] = useState<FormErrors>({})
@@ -46,10 +46,12 @@ export default function LoginMainComponent() {
     if (!validateForm()) return
 
     setIsLoading(true)
-    setTimeout(() => {
+    const result = await signIn(email, password)
+    
+    if (result?.error) {
+      setErrors({ general: "Credenciales inválidas. Verifica tu correo y contraseña." })
       setIsLoading(false)
-      router.push("/dashboard")
-    }, 1500)
+    }
   }
 
   const clearError = (field: keyof FormErrors) => {
@@ -109,6 +111,13 @@ export default function LoginMainComponent() {
             <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isLoading}>
               {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
             </Button>
+
+            {errors.general && (
+              <Alert variant="destructive" className="py-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">{errors.general}</AlertDescription>
+              </Alert>
+            )}
 
             <p className="text-center text-sm text-muted-foreground mt-4">
               ¿Olvidaste tu contraseña?{" "}

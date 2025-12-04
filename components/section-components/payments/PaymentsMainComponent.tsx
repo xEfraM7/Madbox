@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,43 +10,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, MoreVertical, Edit, Eye, AlertCircle } from "lucide-react"
+import { Plus, Search, MoreVertical, Edit, AlertCircle, Loader2 } from "lucide-react"
 import { PaymentFormModal } from "./modals/payment-form-modal"
-
-const paymentsData = [
-  { id: 1, user: "Carlos Rodríguez", plan: "Premium", amount: 49.99, date: "15/03/2024", dueDate: "15/04/2024", status: "paid", method: "Tarjeta" },
-  { id: 2, user: "María García", plan: "Básico", amount: 29.99, date: "20/03/2024", dueDate: "20/04/2024", status: "paid", method: "Efectivo" },
-  { id: 3, user: "Juan López", plan: "Mensual", amount: 39.99, date: "10/03/2024", dueDate: "10/04/2024", status: "pending", method: "-" },
-  { id: 4, user: "Pedro Sánchez", plan: "Básico", amount: 29.99, date: "01/02/2024", dueDate: "01/03/2024", status: "overdue", method: "-" },
-]
+import { getPayments } from "@/lib/actions/payments"
+import { getMembers } from "@/lib/actions/members"
 
 const statusConfig = {
   paid: { variant: "default" as const, label: "Pagado" },
-  pending: { variant: "secondary" as const, label: "Pendiente" },
-  overdue: { variant: "destructive" as const, label: "Vencido" },
 }
 
 export default function PaymentsMainComponent() {
-  const [payments] = useState(paymentsData)
+  const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
 
-  const filteredPayments = payments.filter((payment) => {
-    const matchesSearch = payment.user.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || payment.status === statusFilter
-    return matchesSearch && matchesStatus
+  const { data: payments = [], isLoading } = useQuery({
+    queryKey: ["payments"],
+    queryFn: getPayments,
   })
 
-  const stats = [
-    { title: "Total Recaudado (Mes)", value: `${payments.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.amount, 0).toFixed(2)}`, color: "text-green-500" },
-    { title: "Pagos Pendientes", value: payments.filter((p) => p.status === "pending").length, color: "text-yellow-500" },
-    { title: "Pagos Vencidos", value: payments.filter((p) => p.status === "overdue").length, color: "text-red-500" },
-  ]
+  const { data: members = [] } = useQuery({
+    queryKey: ["members"],
+    queryFn: getMembers,
+  })
 
-  const overdueCount = payments.filter((p) => p.status === "overdue").length
+  const expiredMembers = members.filter((m: any) => m.status === "expired")
+
+  const filteredPayments = payments.filter((payment: any) => {
+    const matchesSearch = payment.members?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          payment.members?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
+  })
+
+  const filteredExpiredMembers = expiredMembers.filter((member: any) => {
+    return member.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           member.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  })
+
+  const totalPaid = payments.filter((p: any) => p.status === "paid").reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+
+  const formatDate = (date: string) => {
+    if (!date) return "-"
+    return new Date(date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
+  }
 
   return (
     <DashboardLayout>
@@ -60,48 +69,71 @@ export default function PaymentsMainComponent() {
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {stats.map((stat) => (
-            <Card key={stat.title}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Recaudado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-500">${totalPaid.toFixed(2)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Clientes Vencidos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-500">{expiredMembers.length}</div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>
           <CardContent className="pt-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar por usuario..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger><SelectValue placeholder="Filtrar por estado" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="paid">Pagado</SelectItem>
-                  <SelectItem value="pending">Pendiente</SelectItem>
-                  <SelectItem value="overdue">Vencido</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar por cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
             </div>
           </CardContent>
         </Card>
 
-        {overdueCount > 0 && (
+        {filteredExpiredMembers.length > 0 && (
           <Card className="border-destructive">
-            <CardContent className="pt-6">
+            <CardHeader>
               <div className="flex items-center gap-3">
                 <AlertCircle className="h-5 w-5 text-destructive" />
                 <div>
-                  <p className="font-medium">Hay {overdueCount} pagos vencidos</p>
-                  <p className="text-sm text-muted-foreground">Revisa los pagos marcados como vencidos y contacta a los usuarios</p>
+                  <CardTitle className="text-lg">Clientes con pago vencido ({filteredExpiredMembers.length})</CardTitle>
+                  <CardDescription>Estos clientes tienen su fecha de pago vencida</CardDescription>
                 </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Fecha de pago</TableHead>
+                      <TableHead className="text-right">Acción</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredExpiredMembers.map((member: any) => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium">{member.name}</TableCell>
+                        <TableCell><Badge variant="outline">{member.plans?.name || "Sin plan"}</Badge></TableCell>
+                        <TableCell className="text-destructive">{formatDate(member.payment_date)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" onClick={() => { setSelectedPayment({ member_id: member.id, plan_id: member.plan_id }); setIsModalOpen(true) }}>
+                            <Plus className="mr-2 h-4 w-4" />Registrar pago
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
@@ -109,52 +141,57 @@ export default function PaymentsMainComponent() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Pagos ({filteredPayments.length})</CardTitle>
-            <CardDescription>Historial completo de transacciones</CardDescription>
+            <CardTitle>Historial de Pagos ({filteredPayments.length})</CardTitle>
+            <CardDescription>Registro de todos los pagos realizados</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Usuario</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Monto</TableHead>
-                    <TableHead>Fecha de pago</TableHead>
-                    <TableHead>Próximo vencimiento</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPayments.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">No se encontraron pagos</TableCell>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Monto</TableHead>
+                      <TableHead>Método</TableHead>
+                      <TableHead>Fecha de pago</TableHead>
+                      <TableHead>Vencimiento</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredPayments.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="font-medium">{payment.user}</TableCell>
-                        <TableCell><Badge variant="outline">{payment.plan}</Badge></TableCell>
-                        <TableCell className="font-medium">${payment.amount}</TableCell>
-                        <TableCell className="text-muted-foreground">{payment.date}</TableCell>
-                        <TableCell className="text-muted-foreground">{payment.dueDate}</TableCell>
-                        <TableCell><Badge variant={statusConfig[payment.status as keyof typeof statusConfig].variant}>{statusConfig[payment.status as keyof typeof statusConfig].label}</Badge></TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />Ver detalle</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { setSelectedPayment(payment); setIsModalOpen(true) }}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPayments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">No se encontraron pagos</TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    ) : (
+                      filteredPayments.map((payment: any) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium">{payment.members?.name || "Sin cliente"}</TableCell>
+                          <TableCell><Badge variant="outline">{payment.plans?.name || "Sin plan"}</Badge></TableCell>
+                          <TableCell className="font-medium">${Number(payment.amount).toFixed(2)}</TableCell>
+                          <TableCell className="text-muted-foreground">{payment.method || "-"}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(payment.payment_date)}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(payment.due_date)}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setSelectedPayment(payment); setIsModalOpen(true) }}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

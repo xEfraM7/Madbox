@@ -1,14 +1,18 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 import { Switch } from "@/components/ui/switch"
+import { Loader2 } from "lucide-react"
+import { createPlan, updatePlan } from "@/lib/actions/plans"
 
 interface PlanFormModalProps {
   open: boolean
@@ -16,22 +20,79 @@ interface PlanFormModalProps {
   plan?: any
 }
 
+interface FormData {
+  name: string
+  price: string
+  duration: string
+  features: string
+  active: boolean
+}
+
 export function PlanFormModal({ open, onOpenChange, plan }: PlanFormModalProps) {
-  const [formData, setFormData] = useState({ name: "", price: "", duration: "Mensual", features: "", active: true })
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
+    defaultValues: { name: "", price: "", duration: "Mensual", features: "", active: true }
+  })
+
+  const active = watch("active")
 
   useEffect(() => {
-    if (plan) {
-      setFormData({ name: plan.name || "", price: plan.price?.toString() || "", duration: plan.duration || "Mensual", features: plan.features?.join("\n") || "", active: plan.active ?? true })
-    } else {
-      setFormData({ name: "", price: "", duration: "Mensual", features: "", active: true })
+    if (open) {
+      if (plan) {
+        reset({
+          name: plan.name || "",
+          price: plan.price?.toString() || "",
+          duration: plan.duration || "Mensual",
+          features: plan.features?.join("\n") || "",
+          active: plan.active ?? true
+        })
+      } else {
+        reset({ name: "", price: "", duration: "Mensual", features: "", active: true })
+      }
     }
-  }, [plan, open])
+  }, [plan, open, reset])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Guardando plan:", formData)
-    onOpenChange(false)
+  const createMutation = useMutation({
+    mutationFn: (data: any) => createPlan(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plans"] })
+      toast.success("Plan creado", { description: "El plan ha sido creado correctamente." })
+      onOpenChange(false)
+    },
+    onError: () => {
+      toast.error("Error", { description: "No se pudo crear el plan." })
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => updatePlan(plan.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plans"] })
+      toast.success("Plan actualizado", { description: "Los cambios han sido guardados." })
+      onOpenChange(false)
+    },
+    onError: () => {
+      toast.error("Error", { description: "No se pudo actualizar el plan." })
+    },
+  })
+
+  const onSubmit = (data: FormData) => {
+    const planData = {
+      name: data.name,
+      price: parseFloat(data.price),
+      duration: "Mensual",
+      features: data.features.split("\n").filter(f => f.trim()),
+      active: data.active
+    }
+
+    if (plan) {
+      updateMutation.mutate(planData)
+    } else {
+      createMutation.mutate(planData)
+    }
   }
+
+  const isLoading = createMutation.isPending || updateMutation.isPending
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -40,42 +101,47 @@ export function PlanFormModal({ open, onOpenChange, plan }: PlanFormModalProps) 
           <DialogTitle>{plan ? "Editar Plan" : "Crear Nuevo Plan"}</DialogTitle>
           <DialogDescription>{plan ? "Modifica los detalles del plan" : "Define un nuevo plan de mensualidad"}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre del plan</Label>
-              <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Plan Premium" required />
+              <Input 
+                id="name" 
+                {...register("name", { required: "El nombre es requerido" })} 
+                placeholder="Ej: Plan Premium" 
+              />
+              {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="price">Precio</Label>
-                <Input id="price" type="number" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder="29.99" required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="duration">Duración</Label>
-                <Select value={formData.duration} onValueChange={(value) => setFormData({ ...formData, duration: value })}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona duración" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Mensual">Mensual</SelectItem>
-                    <SelectItem value="Trimestral">Trimestral</SelectItem>
-                    <SelectItem value="Semestral">Semestral</SelectItem>
-                    <SelectItem value="Anual">Anual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="price">Precio mensual</Label>
+              <Input 
+                id="price" 
+                type="number" 
+                step="0.01" 
+                {...register("price", { required: "El precio es requerido", min: { value: 0, message: "El precio debe ser positivo" } })} 
+                placeholder="29.99" 
+              />
+              {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="features">Características (una por línea)</Label>
-              <Textarea id="features" value={formData.features} onChange={(e) => setFormData({ ...formData, features: e.target.value })} placeholder="Acceso al gimnasio&#10;Clases grupales&#10;Asesoría nutricional" rows={5} />
+              <Textarea 
+                id="features" 
+                {...register("features")} 
+                placeholder="Acceso al gimnasio&#10;Clases grupales&#10;Asesoría nutricional" 
+                rows={5} 
+              />
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="active">Plan activo</Label>
-              <Switch id="active" checked={formData.active} onCheckedChange={(checked) => setFormData({ ...formData, active: checked })} />
+              <Switch id="active" checked={active} onCheckedChange={(checked) => setValue("active", checked)} />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">{plan ? "Guardar cambios" : "Crear plan"}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancelar</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : plan ? "Guardar cambios" : "Crear plan"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -11,9 +11,11 @@ import { Home, Users, Shield, CreditCard, DollarSign, Calendar, Settings, Bell, 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+import { signOut } from "@/lib/actions/auth"
+
 const navigation = [
   { name: "Inicio", href: "/dashboard", icon: Home },
-  { name: "Usuarios", href: "/dashboard/users", icon: Users },
+  { name: "Clientes", href: "/dashboard/users", icon: Users },
   { name: "Roles y Permisos", href: "/dashboard/roles", icon: Shield },
   { name: "Planes", href: "/dashboard/plans", icon: CreditCard },
   { name: "Pagos", href: "/dashboard/payments", icon: DollarSign },
@@ -123,7 +125,7 @@ export function DashboardLayout({ children, userName = "Admin Principal", userEm
                 <DropdownMenuSeparator />
                 <DropdownMenuItem><Settings className="mr-2 h-4 w-4" />Configuración</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive"><LogOut className="mr-2 h-4 w-4" />Cerrar sesión</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive" onClick={() => signOut()}><LogOut className="mr-2 h-4 w-4" />Cerrar sesión</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
