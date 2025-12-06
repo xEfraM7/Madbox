@@ -30,15 +30,18 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const publicRoutes = ["/login", "/"]
+  const publicRoutes = ["/login", "/", "/forgot-password", "/reset-password", "/auth/confirm"]
+
+  // Permitir rutas públicas
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith("/auth/"))
 
   // Si no hay usuario y trata de acceder al dashboard, redirigir a login
   if (!user && pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // Si hay usuario y está en login, redirigir al dashboard
-  if (user && pathname === "/login") {
+  // Si hay usuario y está en login o forgot-password, redirigir al dashboard
+  if (user && (pathname === "/login" || pathname === "/forgot-password")) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 

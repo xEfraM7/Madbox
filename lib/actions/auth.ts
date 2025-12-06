@@ -44,3 +44,32 @@ export async function getAdmin() {
 
   return admin
 }
+
+export async function resetPassword(email: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/confirm?next=/reset-password`,
+  })
+
+  if (error) {
+    console.error("Reset password error:", error)
+    return { error: error.message }
+  }
+
+  return { success: true }
+}
+
+export async function updatePassword(newPassword: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}

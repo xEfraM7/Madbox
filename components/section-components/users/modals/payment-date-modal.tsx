@@ -5,8 +5,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DateInput } from "@/components/ui/date-input"
 import { Loader2, AlertCircle } from "lucide-react"
 import { updatePaymentDate } from "@/lib/actions/members"
 
@@ -74,13 +74,10 @@ export function PaymentDateModal({ open, onOpenChange, user }: PaymentDateModalP
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="payment-date">Nueva fecha de pago (día/mes/año)</Label>
-            <Input
-              id="payment-date"
-              type="date"
+            <Label htmlFor="payment-date">Nueva fecha de pago</Label>
+            <DateInput
               value={newPaymentDate}
-              onChange={(e) => { setNewPaymentDate(e.target.value); setError("") }}
-              min={new Date().toISOString().split("T")[0]}
+              onChange={(value) => { setNewPaymentDate(value); setError("") }}
             />
             {error && (
               <div className="flex items-center gap-2 text-sm text-destructive">

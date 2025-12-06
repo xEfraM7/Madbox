@@ -1,73 +1,141 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Loader2 } from "lucide-react"
+import { createRole, updateRole } from "@/lib/actions/roles"
+import { permissionGroups } from "../RolesMainComponent"
 
 interface RoleFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   role?: any
-  allPermissions: Array<{ id: string; label: string; description: string }>
 }
 
-export function RoleFormModal({ open, onOpenChange, role, allPermissions }: RoleFormModalProps) {
-  const [formData, setFormData] = useState({ name: "", description: "", permissions: [] as string[] })
+interface FormData {
+  name: string
+  description: string
+  permissions: string[]
+}
+
+export function RoleFormModal({ open, onOpenChange, role }: RoleFormModalProps) {
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
+    defaultValues: { name: "", description: "", permissions: [] }
+  })
+
+  const permissions = watch("permissions")
 
   useEffect(() => {
-    if (role) {
-      setFormData({ name: role.name || "", description: role.description || "", permissions: role.permissions || [] })
-    } else {
-      setFormData({ name: "", description: "", permissions: [] })
+    if (open) {
+      if (role) {
+        reset({
+          name: role.name || "",
+          description: role.description || "",
+          permissions: role.permissions || []
+        })
+      } else {
+        reset({ name: "", description: "", permissions: [] })
+      }
     }
-  }, [role, open])
+  }, [role, open, reset])
 
-  const handlePermissionToggle = (permissionId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      permissions: prev.permissions.includes(permissionId)
-        ? prev.permissions.filter((p) => p !== permissionId)
-        : [...prev.permissions, permissionId],
-    }))
+  const togglePermission = (permissionId: string) => {
+    const current = permissions || []
+    if (current.includes(permissionId)) {
+      setValue("permissions", current.filter((p) => p !== permissionId))
+    } else {
+      setValue("permissions", [...current, permissionId])
+    }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Guardando rol:", formData)
-    onOpenChange(false)
+  const createMutation = useMutation({
+    mutationFn: (data: any) => createRole(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] })
+      toast.success("Rol creado", { description: "El rol ha sido creado correctamente." })
+      onOpenChange(false)
+    },
+    onError: () => toast.error("Error", { description: "No se pudo crear el rol." }),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => updateRole(role.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] })
+      toast.success("Rol actualizado", { description: "Los cambios han sido guardados." })
+      onOpenChange(false)
+    },
+    onError: () => toast.error("Error", { description: "No se pudo actualizar el rol." }),
+  })
+
+  const onSubmit = (data: FormData) => {
+    if (role) {
+      updateMutation.mutate(data)
+    } else {
+      createMutation.mutate(data)
+    }
   }
+
+  const isLoading = createMutation.isPending || updateMutation.isPending
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{role ? "Editar Rol" : "Crear Nuevo Rol"}</DialogTitle>
-          <DialogDescription>{role ? "Modifica el rol y sus permisos asociados" : "Define un nuevo rol con permisos personalizados"}</DialogDescription>
+          <DialogDescription>{role ? "Modifica los permisos del rol" : "Define un nuevo rol con permisos personalizados"}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-6 py-4">
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre del rol</Label>
-              <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: Recepcionista" required />
+              <Input id="name" {...register("name", { required: "El nombre es requerido" })} placeholder="Ej: Recepcionista" />
+              {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>
-              <Textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Describe las responsabilidades de este rol" rows={3} />
+              <Input id="description" {...register("description")} placeholder="Descripción del rol" />
             </div>
-            <div className="grid gap-4">
+            <div className="grid gap-2">
               <Label>Permisos</Label>
-              <div className="space-y-4 border rounded-lg p-4">
-                {allPermissions.map((permission) => (
-                  <div key={permission.id} className="flex items-start gap-3">
-                    <Checkbox id={`perm-${permission.id}`} checked={formData.permissions.includes(permission.id)} onCheckedChange={() => handlePermissionToggle(permission.id)} className="mt-1" />
-                    <div className="flex-1">
-                      <label htmlFor={`perm-${permission.id}`} className="text-sm font-medium leading-none cursor-pointer">{permission.label}</label>
-                      <p className="text-sm text-muted-foreground mt-1">{permission.description}</p>
+              <div className="border rounded-md p-4 space-y-4 max-h-[300px] overflow-y-auto">
+                {permissionGroups.map((group) => (
+                  <div key={group.id} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`group-${group.id}`}
+                        checked={group.permissions.every(p => (permissions || []).includes(p.id))}
+                        onCheckedChange={(checked) => {
+                          const groupPermIds = group.permissions.map(p => p.id)
+                          if (checked) {
+                            const newPerms = [...new Set([...(permissions || []), ...groupPermIds])]
+                            setValue("permissions", newPerms)
+                          } else {
+                            setValue("permissions", (permissions || []).filter(p => !groupPermIds.includes(p)))
+                          }
+                        }}
+                      />
+                      <label htmlFor={`group-${group.id}`} className="text-sm font-semibold cursor-pointer">{group.label}</label>
+                    </div>
+                    <div className="ml-6 space-y-1.5">
+                      {group.permissions.map((permission) => (
+                        <div key={permission.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`perm-${permission.id}`}
+                            checked={(permissions || []).includes(permission.id)}
+                            onCheckedChange={() => togglePermission(permission.id)}
+                          />
+                          <label htmlFor={`perm-${permission.id}`} className="text-sm cursor-pointer">{permission.label}</label>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -75,8 +143,10 @@ export function RoleFormModal({ open, onOpenChange, role, allPermissions }: Role
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">{role ? "Guardar cambios" : "Crear rol"}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancelar</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : role ? "Guardar cambios" : "Crear rol"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

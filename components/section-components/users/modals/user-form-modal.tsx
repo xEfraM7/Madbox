@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DateInput } from "@/components/ui/date-input"
 import { createMember, updateMember } from "@/lib/actions/members"
 import { getPlans } from "@/lib/actions/plans"
 
@@ -118,7 +119,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
             </div>
             <div className="grid gap-2">
               <Label htmlFor="payment_date">Fecha de pago</Label>
-              <Input id="payment_date" type="date" {...register("payment_date", { required: "La fecha de pago es requerida" })} />
+              <DateInput value={watch("payment_date")} onChange={(value) => setValue("payment_date", value)} />
               {errors.payment_date && <p className="text-sm text-destructive">{errors.payment_date.message}</p>}
             </div>
           </div>

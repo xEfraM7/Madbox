@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dumbbell, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { signIn } from "@/lib/actions/auth"
+import Link from "next/link"
 
 interface FormErrors {
   email?: string
@@ -121,7 +122,7 @@ export default function LoginMainComponent() {
 
             <p className="text-center text-sm text-muted-foreground mt-4">
               ¿Olvidaste tu contraseña?{" "}
-              <a href="#" className="text-primary hover:underline font-medium">Recuperar acceso</a>
+              <Link href="/forgot-password" className="text-primary hover:underline font-medium">Recuperar acceso</Link>
             </p>
           </form>
         </CardContent>
