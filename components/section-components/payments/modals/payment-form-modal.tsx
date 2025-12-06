@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MemberSearchSelect } from "@/components/ui/member-search-select"
+import { DateInput } from "@/components/ui/date-input"
 import { Loader2 } from "lucide-react"
 import { createPayment, updatePayment } from "@/lib/actions/payments"
 import { getMembers } from "@/lib/actions/members"
@@ -126,14 +128,6 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     }
   }
 
-  // Auto-calcular fecha de vencimiento cuando cambia fecha de pago
-  const handlePaymentDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (value && !isEditing) {
-      setValue("due_date", calculateDueDate(value))
-    }
-  }
-
   const createMutation = useMutation({
     mutationFn: (data: any) => createPayment(data),
     onSuccess: () => {
@@ -191,14 +185,11 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="member_id">Cliente</Label>
-              <Select value={member_id} onValueChange={handleMemberChange}>
-                <SelectTrigger><SelectValue placeholder="Selecciona un cliente" /></SelectTrigger>
-                <SelectContent>
-                  {members.map((member: any) => (
-                    <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MemberSearchSelect
+                members={members.map((m: any) => ({ id: m.id, name: m.name, email: m.email }))}
+                value={member_id}
+                onValueChange={handleMemberChange}
+              />
             </div>
 
             <div className="grid gap-2">
@@ -243,16 +234,19 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="payment_date">Fecha de pago</Label>
-                <Input 
-                  id="payment_date" 
-                  type="date" 
-                  {...register("payment_date")} 
-                  onChange={handlePaymentDateChange}
+                <DateInput 
+                  value={watch("payment_date")} 
+                  onChange={(value) => {
+                    setValue("payment_date", value)
+                    if (value && !isEditing) {
+                      setValue("due_date", calculateDueDate(value))
+                    }
+                  }}
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="due_date">Fecha de vencimiento</Label>
-                <Input id="due_date" type="date" {...register("due_date", { required: "La fecha de vencimiento es requerida" })} />
+                <DateInput value={watch("due_date")} onChange={(value) => setValue("due_date", value)} />
                 {errors.due_date && <p className="text-sm text-destructive">{errors.due_date.message}</p>}
               </div>
             </div>

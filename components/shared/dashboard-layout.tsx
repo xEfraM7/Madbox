@@ -2,16 +2,16 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { Home, Users, Shield, CreditCard, DollarSign, Calendar, Settings, Bell, LogOut, Menu, X, Dumbbell } from "lucide-react"
+
+import { Home, Users, Shield, CreditCard, DollarSign, Calendar, Settings, LogOut, Menu, X, Dumbbell } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-
 import { signOut } from "@/lib/actions/auth"
+import { getGymSettings } from "@/lib/actions/settings"
 
 const navigation = [
   { name: "Inicio", href: "/dashboard", icon: Home },
@@ -27,12 +27,18 @@ interface DashboardLayoutProps {
   children: React.ReactNode
   userName?: string
   userEmail?: string
-  notifications?: number
 }
 
-export function DashboardLayout({ children, userName = "Admin Principal", userEmail = "admin@gimnasio.com", notifications = 3 }: DashboardLayoutProps) {
+export function DashboardLayout({ children, userName = "Admin Principal", userEmail = "admin@gimnasio.com" }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
+
+  const { data: gymSettings } = useQuery({
+    queryKey: ["gym-settings"],
+    queryFn: getGymSettings,
+  })
+
+  const gymName = gymSettings?.name || "FitAdmin Pro"
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -45,7 +51,7 @@ export function DashboardLayout({ children, userName = "Admin Principal", userEm
               <Dumbbell className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-sidebar-foreground">FitAdmin Pro</h1>
+              <h1 className="text-lg font-bold text-sidebar-foreground">{gymName}</h1>
               <p className="text-xs text-sidebar-foreground/60">Gestión completa</p>
             </div>
           </div>
@@ -77,6 +83,9 @@ export function DashboardLayout({ children, userName = "Admin Principal", userEm
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
                 <p className="text-xs text-sidebar-foreground/60 truncate">{userEmail}</p>
               </div>
+              <Button variant="ghost" size="icon" onClick={() => signOut()} className="text-sidebar-foreground/70 hover:text-destructive">
+                <LogOut className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
@@ -91,44 +100,7 @@ export function DashboardLayout({ children, userName = "Admin Principal", userEm
             <h2 className="text-lg font-semibold text-foreground">{navigation.find((item) => item.href === pathname)?.name || "Dashboard"}</h2>
           </div>
 
-          <div className="flex items-center gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  {notifications > 0 && <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">{notifications}</Badge>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="space-y-2 p-2">
-                  <div className="text-sm p-2 rounded-md hover:bg-accent"><p className="font-medium">Nuevo usuario registrado</p><p className="text-xs text-muted-foreground">Hace 5 minutos</p></div>
-                  <div className="text-sm p-2 rounded-md hover:bg-accent"><p className="font-medium">Pago vencido - Juan Pérez</p><p className="text-xs text-muted-foreground">Hace 2 horas</p></div>
-                  <div className="text-sm p-2 rounded-md hover:bg-accent"><p className="font-medium">Nueva clase programada</p><p className="text-xs text-muted-foreground">Hace 1 día</p></div>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2 px-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">{userName.substring(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium hidden md:inline">{userName}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem><Settings className="mr-2 h-4 w-4" />Configuración</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={() => signOut()}><LogOut className="mr-2 h-4 w-4" />Cerrar sesión</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          
         </header>
 
         <main className="flex-1 overflow-y-auto bg-background">
