@@ -76,22 +76,22 @@ export function UserDetailModal({ open, onOpenChange, user }: UserDetailModalPro
             <Card>
               <CardHeader><CardTitle className="text-lg">Información Personal</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div><p className="text-sm font-medium">Nombre</p><p className="text-sm text-muted-foreground">{user.name}</p></div>
+                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0"><p className="text-sm font-medium">Nombre</p><p className="text-sm text-muted-foreground truncate">{user.name}</p></div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <div><p className="text-sm font-medium">Correo</p><p className="text-sm text-muted-foreground">{user.email}</p></div>
+                    <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0"><p className="text-sm font-medium">Correo</p><p className="text-sm text-muted-foreground truncate">{user.email}</p></div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div><p className="text-sm font-medium">Teléfono</p><p className="text-sm text-muted-foreground">{user.phone}</p></div>
+                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0"><p className="text-sm font-medium">Teléfono</p><p className="text-sm text-muted-foreground">{user.phone || "No registrado"}</p></div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div><p className="text-sm font-medium">Fecha de pago</p><p className="text-sm text-muted-foreground">{formatDate(user.payment_date)}</p></div>
+                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0"><p className="text-sm font-medium">Fecha de pago</p><p className="text-sm text-muted-foreground">{formatDate(user.payment_date)}</p></div>
                   </div>
                 </div>
                 <Separator />
@@ -138,12 +138,12 @@ export function UserDetailModal({ open, onOpenChange, user }: UserDetailModalPro
               </CardContent>
             </Card>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setDateModalOpen(true)}>
-                <Calendar className="mr-2 h-4 w-4" />Cambiar fecha de pago
+                <Calendar className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Cambiar fecha de pago</span><span className="sm:hidden">Fecha de pago</span>
               </Button>
               <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setFreezeDialogOpen(true)}>
-                <Snowflake className="mr-2 h-4 w-4" />{user.frozen ? "Descongelar" : "Congelar"} mensualidad
+                <Snowflake className="mr-2 h-4 w-4" />{user.frozen ? "Descongelar" : "Congelar"}<span className="hidden sm:inline"> mensualidad</span>
               </Button>
             </div>
           </div>

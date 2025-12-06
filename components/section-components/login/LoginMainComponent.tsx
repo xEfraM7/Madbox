@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dumbbell, AlertCircle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { signIn } from "@/lib/actions/auth"
 import Link from "next/link"
@@ -63,11 +63,11 @@ export default function LoginMainComponent() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-secondary/20 to-background p-4">
       <Card className="w-full max-w-md shadow-2xl border-border/50">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <Dumbbell className="w-8 h-8 text-primary" />
+          <div className="mx-auto w-32 h-auto">
+            <img src="/Madbox_logo.jpeg" alt="Madbox" className="w-full h-auto object-contain" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold">FitAdmin Pro</CardTitle>
+            <CardTitle className="text-3xl font-bold">Madbox</CardTitle>
             <CardDescription className="text-base mt-2">Panel de administración del gimnasio</CardDescription>
           </div>
         </CardHeader>

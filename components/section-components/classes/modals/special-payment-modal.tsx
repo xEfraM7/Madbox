@@ -24,12 +24,15 @@ interface FormData {
   class_id: string
   amount: string
   method: string
+  reference: string
 }
+
+const METHODS_WITH_REFERENCE = ["Pago Movil", "Transferencia", "Transferencia BS", "USDT"]
 
 export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalProps) {
   const queryClient = useQueryClient()
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    defaultValues: { member_id: "", class_id: "", amount: "", method: "Efectivo" }
+    defaultValues: { member_id: "", class_id: "", amount: "", method: "Efectivo", reference: "" }
   })
 
   const member_id = watch("member_id")
@@ -50,7 +53,7 @@ export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalP
 
   useEffect(() => {
     if (open) {
-      reset({ member_id: "", class_id: "", amount: "", method: "Efectivo" })
+      reset({ member_id: "", class_id: "", amount: "", method: "Efectivo", reference: "" })
     }
   }, [open, reset])
 
@@ -66,7 +69,9 @@ export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalP
     mutationFn: (data: any) => createSpecialClassPayment(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["special-class-payments"] })
+      queryClient.invalidateQueries({ queryKey: ["special-class-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["special-classes"] })
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
       toast.success("Pago registrado", { description: "El pago ha sido registrado correctamente." })
       onOpenChange(false)
     },
@@ -81,6 +86,7 @@ export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalP
       class_id: data.class_id,
       amount: parseFloat(data.amount),
       method: data.method,
+      reference: METHODS_WITH_REFERENCE.includes(data.method) ? data.reference : null,
       status: "paid",
       payment_date: new Date().toISOString().split("T")[0]
     }
@@ -130,15 +136,27 @@ export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalP
                 <Select value={method} onValueChange={(value) => setValue("method", value)}>
                   <SelectTrigger><SelectValue placeholder="Selecciona método" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Efectivo">Efectivo</SelectItem>
+                    <SelectItem value="Efectivo">Efectivo USD</SelectItem>
                     <SelectItem value="Pago Movil">Pago Móvil</SelectItem>
                     <SelectItem value="Efectivo bs">Efectivo Bs</SelectItem>
                     <SelectItem value="Transferencia">Transferencia</SelectItem>
+                    <SelectItem value="Transferencia BS">Transferencia BS</SelectItem>
                     <SelectItem value="USDT">USDT</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
+            {METHODS_WITH_REFERENCE.includes(method) && (
+              <div className="grid gap-2">
+                <Label htmlFor="reference">Referencia</Label>
+                <Input 
+                  id="reference" 
+                  {...register("reference")} 
+                  placeholder="Número de referencia o hash" 
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancelar</Button>

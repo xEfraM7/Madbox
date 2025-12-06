@@ -3,6 +3,8 @@
 import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { TablesInsert, TablesUpdate } from "@/types/database"
+import { addToFund, subtractFromFund } from "./funds"
+import { logActivity } from "./activity"
 
 export async function getPayments() {
   const supabase = await createClient()
@@ -37,8 +39,29 @@ export async function createPayment(payment: TablesInsert<"payments">) {
       .eq("id", payment.member_id)
   }
 
+  // Agregar al fondo correspondiente si el pago está pagado
+  if (payment.status === "paid" && payment.method && payment.amount) {
+    await addToFund(payment.method, payment.amount)
+  }
+
+  // Obtener nombre del miembro para el log
+  const { data: member } = await supabase
+    .from("members")
+    .select("name")
+    .eq("id", payment.member_id)
+    .single()
+
+  await logActivity({
+    action: "payment_registered",
+    entityType: "payment",
+    entityId: data.id,
+    entityName: member?.name,
+    details: { amount: payment.amount, method: payment.method }
+  })
+
   revalidatePath("/dashboard/payments")
   revalidatePath("/dashboard/users")
+  revalidatePath("/dashboard")
   return data
 }
 
@@ -80,4 +103,35 @@ export async function getMemberPayments(memberId: string) {
 
   if (error) throw error
   return data
+}
+
+
+export async function deletePayment(id: string) {
+  const supabase = await createClient()
+  
+  // Obtener el pago antes de eliminarlo para restar del fondo
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("method, amount, status, member_id, members(name)")
+    .eq("id", id)
+    .single()
+
+  const { error } = await supabase.from("payments").delete().eq("id", id)
+  if (error) throw error
+
+  // Restar del fondo si el pago estaba pagado
+  if (payment?.status === "paid" && payment.method && payment.amount) {
+    await subtractFromFund(payment.method, payment.amount)
+  }
+
+  await logActivity({
+    action: "payment_deleted",
+    entityType: "payment",
+    entityId: id,
+    entityName: (payment as any)?.members?.name,
+    details: { amount: payment?.amount }
+  })
+
+  revalidatePath("/dashboard/payments")
+  revalidatePath("/dashboard")
 }

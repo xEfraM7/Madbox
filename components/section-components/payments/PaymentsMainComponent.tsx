@@ -10,20 +10,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Plus, Search, MoreVertical, Edit, AlertCircle, Loader2 } from "lucide-react"
+import { Plus, Search, MoreVertical, Edit, Trash2, AlertCircle, Loader2, Banknote, DollarSign, Bitcoin } from "lucide-react"
 import { PaymentFormModal } from "./modals/payment-form-modal"
-import { getPayments } from "@/lib/actions/payments"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { PaymentDetailModal } from "@/components/shared/payment-detail-modal"
+import { getPayments, deletePayment } from "@/lib/actions/payments"
 import { getMembers } from "@/lib/actions/members"
+import { getPaymentsFundsSummary, getExchangeRates } from "@/lib/actions/funds"
 
-const statusConfig = {
-  paid: { variant: "default" as const, label: "Pagado" },
-}
+
 
 export default function PaymentsMainComponent() {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [paymentToDelete, setPaymentToDelete] = useState<any>(null)
+  const [selectedRate, setSelectedRate] = useState<"bcv" | "usdt" | "cash">("bcv")
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [detailPayment, setDetailPayment] = useState<any>(null)
 
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["payments"],
@@ -33,6 +39,62 @@ export default function PaymentsMainComponent() {
   const { data: members = [] } = useQuery({
     queryKey: ["members"],
     queryFn: getMembers,
+  })
+
+  const { data: fundsSummary } = useQuery({
+    queryKey: ["payments-funds-summary"],
+    queryFn: getPaymentsFundsSummary,
+  })
+
+  const { data: exchangeRates = [] } = useQuery({
+    queryKey: ["exchange-rates"],
+    queryFn: getExchangeRates,
+  })
+
+  const bcvRate = exchangeRates.find((r: any) => r.type === "BCV")?.rate || 1
+  const usdtRate = exchangeRates.find((r: any) => r.type === "USDT")?.rate || 1
+
+  const getRateValue = () => {
+    switch (selectedRate) {
+      case "bcv": return bcvRate
+      case "usdt": return usdtRate
+      case "cash": return usdtRate // Efectivo usa la misma tasa que USDT
+      default: return bcvRate
+    }
+  }
+
+  const getRateLabel = () => {
+    switch (selectedRate) {
+      case "bcv": return "BCV"
+      case "usdt": return "USDT"
+      case "cash": return "Efectivo"
+      default: return "BCV"
+    }
+  }
+
+  const calculateTotalInUsd = () => {
+    const bs = fundsSummary?.bs || 0
+    const usdCash = fundsSummary?.usdCash || 0
+    const usdt = fundsSummary?.usdt || 0
+    const rate = getRateValue()
+    
+    const bsInUsd = bs / rate
+    return bsInUsd + usdCash + usdt
+  }
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deletePayment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] })
+      queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
+      toast.success("Pago eliminado", { description: "El pago ha sido eliminado correctamente." })
+      setDeleteDialogOpen(false)
+      setPaymentToDelete(null)
+    },
+    onError: () => {
+      toast.error("Error", { description: "No se pudo eliminar el pago." })
+    },
   })
 
   const expiredMembers = members.filter((m: any) => m.status === "expired")
@@ -48,11 +110,19 @@ export default function PaymentsMainComponent() {
            member.email?.toLowerCase().includes(searchTerm.toLowerCase())
   })
 
-  const totalPaid = payments.filter((p: any) => p.status === "paid").reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+
 
   const formatDate = (date: string) => {
     if (!date) return "-"
     return new Date(date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
+  }
+
+  const formatAmount = (amount: number, method: string) => {
+    const bsMethods = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
+    if (bsMethods.includes(method)) {
+      return `Bs. ${amount.toLocaleString("es-ES", { minimumFractionDigits: 2 })}`
+    }
+    return `$${amount.toFixed(2)}`
   }
 
   return (
@@ -69,21 +139,63 @@ export default function PaymentsMainComponent() {
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Recaudado</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos Totales</CardTitle>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    Tasa {getRateLabel()}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-500">${totalPaid.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-green-500">${calculateTotalInUsd().toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">Bs a {getRateLabel()}: {getRateValue().toFixed(2)}</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Clientes Vencidos</CardTitle>
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Bolso Bolívares</CardTitle>
+              <Banknote className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-red-500">{expiredMembers.length}</div>
+              <div className="text-2xl font-bold">Bs. {(fundsSummary?.bs || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })}</div>
+              <p className="text-xs text-muted-foreground">≈ ${((fundsSummary?.bs || 0) / bcvRate).toFixed(2)} USD</p>
+            </CardContent>
+          </Card>
+          <Card className="border-green-500/20 bg-green-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Bolso USD Efectivo</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${(fundsSummary?.usdCash || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-orange-500/20 bg-orange-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Bolso USDT</CardTitle>
+              <Bitcoin className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${(fundsSummary?.usdt || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })} USDT</div>
+            </CardContent>
+          </Card>
+          <Card className="border-red-500/20 bg-red-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Clientes Vencidos</CardTitle>
+              <AlertCircle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-500">{expiredMembers.length}</div>
             </CardContent>
           </Card>
         </div>
@@ -114,20 +226,25 @@ export default function PaymentsMainComponent() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Fecha de pago</TableHead>
+                      <TableHead className="hidden sm:table-cell">Plan</TableHead>
+                      <TableHead className="hidden md:table-cell">Fecha de pago</TableHead>
                       <TableHead className="text-right">Acción</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredExpiredMembers.map((member: any) => (
                       <TableRow key={member.id}>
-                        <TableCell className="font-medium">{member.name}</TableCell>
-                        <TableCell><Badge variant="outline">{member.plans?.name || "Sin plan"}</Badge></TableCell>
-                        <TableCell className="text-destructive">{formatDate(member.payment_date)}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{member.name}</p>
+                            <p className="text-xs text-destructive sm:hidden">{formatDate(member.payment_date)}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell"><Badge variant="outline">{member.plans?.name || "Sin plan"}</Badge></TableCell>
+                        <TableCell className="hidden md:table-cell text-destructive">{formatDate(member.payment_date)}</TableCell>
                         <TableCell className="text-right">
                           <Button size="sm" onClick={() => { setSelectedPayment({ member_id: member.id, plan_id: member.plan_id }); setIsModalOpen(true) }}>
-                            <Plus className="mr-2 h-4 w-4" />Registrar pago
+                            <Plus className="mr-2 h-4 w-4 hidden sm:inline" /><span className="hidden sm:inline">Registrar pago</span><span className="sm:hidden">Pagar</span>
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -155,33 +272,35 @@ export default function PaymentsMainComponent() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
-                      <TableHead>Plan</TableHead>
                       <TableHead>Monto</TableHead>
-                      <TableHead>Método</TableHead>
-                      <TableHead>Fecha de pago</TableHead>
-                      <TableHead>Vencimiento</TableHead>
+                      <TableHead className="hidden sm:table-cell">Método</TableHead>
+                      <TableHead className="hidden md:table-cell">Fecha</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredPayments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">No se encontraron pagos</TableCell>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No se encontraron pagos</TableCell>
                       </TableRow>
                     ) : (
                       filteredPayments.map((payment: any) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">{payment.members?.name || "Sin cliente"}</TableCell>
-                          <TableCell><Badge variant="outline">{payment.plans?.name || "Sin plan"}</Badge></TableCell>
-                          <TableCell className="font-medium">${Number(payment.amount).toFixed(2)}</TableCell>
-                          <TableCell className="text-muted-foreground">{payment.method || "-"}</TableCell>
-                          <TableCell className="text-muted-foreground">{formatDate(payment.payment_date)}</TableCell>
-                          <TableCell className="text-muted-foreground">{formatDate(payment.due_date)}</TableCell>
-                          <TableCell className="text-right">
+                        <TableRow key={payment.id} className="cursor-pointer" onClick={() => { setDetailPayment(payment); setDetailModalOpen(true) }}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{payment.members?.name || "Sin cliente"}</p>
+                              <p className="text-xs text-muted-foreground sm:hidden">{payment.method}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">{formatAmount(Number(payment.amount), payment.method)}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-muted-foreground">{payment.method || "-"}</TableCell>
+                          <TableCell className="hidden md:table-cell text-muted-foreground">{formatDate(payment.payment_date)}</TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => { setSelectedPayment(payment); setIsModalOpen(true) }}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setPaymentToDelete(payment); setDeleteDialogOpen(true) }} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Eliminar</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -197,6 +316,23 @@ export default function PaymentsMainComponent() {
       </div>
 
       <PaymentFormModal open={isModalOpen} onOpenChange={setIsModalOpen} payment={selectedPayment} />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Eliminar pago"
+        description={`¿Estás seguro de que deseas eliminar este pago de $${paymentToDelete?.amount}? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        variant="danger"
+        onConfirm={() => deleteMutation.mutate(paymentToDelete?.id)}
+        isLoading={deleteMutation.isPending}
+      />
+
+      <PaymentDetailModal 
+        open={detailModalOpen} 
+        onOpenChange={setDetailModalOpen} 
+        payment={detailPayment} 
+      />
     </DashboardLayout>
   )
 }

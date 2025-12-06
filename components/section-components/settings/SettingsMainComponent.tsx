@@ -10,14 +10,21 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Save, Building2, Calendar, Loader2 } from "lucide-react"
+import { Save, Building2, Calendar, Loader2, KeyRound } from "lucide-react"
 import { getGymSettings, updateGymSettings, getGymSchedule, updateGymSchedule } from "@/lib/actions/settings"
+import { updatePassword } from "@/lib/actions/auth"
 
 interface GymInfoForm {
   name: string
   email: string
   phone: string
   address: string
+}
+
+interface PasswordForm {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
 }
 
 const dayOrder = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -41,6 +48,10 @@ export default function SettingsMainComponent() {
 
   const { register, handleSubmit, reset } = useForm<GymInfoForm>({
     defaultValues: { name: "", email: "", phone: "", address: "" }
+  })
+
+  const { register: registerPassword, handleSubmit: handleSubmitPassword, reset: resetPassword, formState: { errors: passwordErrors } } = useForm<PasswordForm>({
+    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" }
   })
 
   useEffect(() => {
@@ -81,6 +92,29 @@ export default function SettingsMainComponent() {
     updateSettingsMutation.mutate(data)
   }
 
+  const updatePasswordMutation = useMutation({
+    mutationFn: (newPassword: string) => updatePassword(newPassword),
+    onSuccess: () => {
+      toast.success("Contraseña actualizada", { description: "Tu contraseña ha sido cambiada exitosamente." })
+      resetPassword()
+    },
+    onError: (error: Error) => {
+      toast.error("Error", { description: error.message || "No se pudo actualizar la contraseña." })
+    },
+  })
+
+  const onSubmitPassword = (data: PasswordForm) => {
+    if (data.newPassword !== data.confirmPassword) {
+      toast.error("Error", { description: "Las contraseñas no coinciden." })
+      return
+    }
+    if (data.newPassword.length < 6) {
+      toast.error("Error", { description: "La contraseña debe tener al menos 6 caracteres." })
+      return
+    }
+    updatePasswordMutation.mutate(data.newPassword)
+  }
+
   const handleScheduleChange = (id: string, field: "open_time" | "close_time", value: string) => {
     const daySchedule = schedule.find((s: any) => s.id === id)
     if (daySchedule) {
@@ -114,6 +148,7 @@ export default function SettingsMainComponent() {
           <TabsList>
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="schedule">Horarios</TabsTrigger>
+            <TabsTrigger value="account">Cuenta</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general">
@@ -129,7 +164,7 @@ export default function SettingsMainComponent() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit(onSubmitGymInfo)} className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                     <div className="grid gap-2">
                       <Label htmlFor="name">Nombre del gimnasio</Label>
                       <Input id="name" {...register("name")} />
@@ -172,29 +207,81 @@ export default function SettingsMainComponent() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-4 text-sm font-medium text-muted-foreground">
+                  <div className="hidden sm:grid grid-cols-3 gap-4 text-sm font-medium text-muted-foreground">
                     <span>Día</span>
                     <span>Apertura</span>
                     <span>Cierre</span>
                   </div>
                   {sortedSchedule.map((day: any) => (
-                    <div key={day.id} className="grid grid-cols-3 gap-4 items-center">
-                      <Label>{day.day_of_week}</Label>
-                      <Input 
-                        type="time" 
-                        defaultValue={day.open_time?.slice(0, 5)} 
-                        className="[color-scheme:dark]"
-                        onBlur={(e) => handleScheduleChange(day.id, "open_time", e.target.value)}
-                      />
-                      <Input 
-                        type="time" 
-                        defaultValue={day.close_time?.slice(0, 5)} 
-                        className="[color-scheme:dark]"
-                        onBlur={(e) => handleScheduleChange(day.id, "close_time", e.target.value)}
-                      />
+                    <div key={day.id} className="flex flex-col sm:grid sm:grid-cols-3 gap-2 sm:gap-4 sm:items-center p-3 sm:p-0 border sm:border-0 rounded-lg sm:rounded-none">
+                      <Label className="font-medium">{day.day_of_week}</Label>
+                      <div className="flex gap-2 sm:contents">
+                        <div className="flex-1 sm:block">
+                          <span className="text-xs text-muted-foreground sm:hidden">Abre: </span>
+                          <Input 
+                            type="time" 
+                            defaultValue={day.open_time?.slice(0, 5)} 
+                            className="scheme-dark"
+                            onBlur={(e) => handleScheduleChange(day.id, "open_time", e.target.value)}
+                          />
+                        </div>
+                        <div className="flex-1 sm:block">
+                          <span className="text-xs text-muted-foreground sm:hidden">Cierra: </span>
+                          <Input 
+                            type="time" 
+                            defaultValue={day.close_time?.slice(0, 5)} 
+                            className="scheme-dark"
+                            onBlur={(e) => handleScheduleChange(day.id, "close_time", e.target.value)}
+                          />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="account">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <KeyRound className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle>Cambiar Contraseña</CardTitle>
+                    <CardDescription>Actualiza tu contraseña de acceso</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmitPassword(onSubmitPassword)} className="space-y-4 max-w-md">
+                  <div className="grid gap-2">
+                    <Label htmlFor="newPassword">Nueva contraseña</Label>
+                    <Input 
+                      id="newPassword" 
+                      type="password" 
+                      placeholder="••••••••"
+                      {...registerPassword("newPassword", { required: true, minLength: 6 })} 
+                    />
+                    <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
+                    <Input 
+                      id="confirmPassword" 
+                      type="password" 
+                      placeholder="••••••••"
+                      {...registerPassword("confirmPassword", { required: true })} 
+                    />
+                  </div>
+                  <Button type="submit" disabled={updatePasswordMutation.isPending}>
+                    {updatePasswordMutation.isPending ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Actualizando...</>
+                    ) : (
+                      <><KeyRound className="mr-2 h-4 w-4" />Cambiar contraseña</>
+                    )}
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           </TabsContent>

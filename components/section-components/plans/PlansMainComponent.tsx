@@ -136,8 +136,7 @@ export default function PlansMainComponent() {
                       <TableRow>
                         <TableHead>Nombre</TableHead>
                         <TableHead>Precio</TableHead>
-                        
-                        <TableHead>Estado</TableHead>
+                        <TableHead className="hidden sm:table-cell">Estado</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -149,10 +148,14 @@ export default function PlansMainComponent() {
                       ) : (
                         plans.map((plan: any) => (
                           <TableRow key={plan.id}>
-                            <TableCell className="font-medium">{plan.name}</TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{plan.name}</p>
+                                <Badge variant={plan.active ? "default" : "secondary"} className="sm:hidden text-xs mt-1">{plan.active ? "Activo" : "Inactivo"}</Badge>
+                              </div>
+                            </TableCell>
                             <TableCell>${Number(plan.price).toFixed(2)}</TableCell>
-                            
-                            <TableCell><Badge variant={plan.active ? "default" : "secondary"}>{plan.active ? "Activo" : "Inactivo"}</Badge></TableCell>
+                            <TableCell className="hidden sm:table-cell"><Badge variant={plan.active ? "default" : "secondary"}>{plan.active ? "Activo" : "Inactivo"}</Badge></TableCell>
                             <TableCell className="text-right"><PlanActions plan={plan} /></TableCell>
                           </TableRow>
                         ))

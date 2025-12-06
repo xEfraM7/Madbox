@@ -2,90 +2,173 @@
 
 import { createClient } from "@/utils/supabase/server"
 
-interface MemberStatus {
-  status: string | null
-}
-
-interface PaymentData {
-  amount: number
-  status: string | null
-}
-
-interface PaymentWithRelations {
-  created_at: string | null
-  status: string | null
-  members: { name: string } | null
-}
-
-interface UpcomingPayment {
-  due_date: string
-  members: { name: string } | null
-  plans: { name: string } | null
-}
-
 export async function getDashboardStats() {
   const supabase = await createClient()
 
-  const [membersResult, paymentsResult, plansResult] = await Promise.all([
-    supabase.from("members").select("status"),
-    supabase.from("payments").select("amount, status"),
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString()
+
+  const [
+    membersResult,
+    lastMonthMembersResult,
+    paymentsResult,
+    lastMonthPaymentsResult,
+    plansResult,
+    specialClassesResult,
+  ] = await Promise.all([
+    supabase.from("members").select("id, status"),
+    supabase.from("members").select("id").lte("created_at", endOfLastMonth),
+    supabase.from("payments").select("amount, status, method").gte("created_at", startOfMonth),
+    supabase.from("payments").select("amount, status, method").gte("created_at", startOfLastMonth).lt("created_at", startOfMonth),
     supabase.from("plans").select("id").eq("active", true),
+    supabase.from("special_classes").select("id, enrolled, capacity"),
   ])
 
-  const members = (membersResult.data || []) as MemberStatus[]
-  const payments = (paymentsResult.data || []) as PaymentData[]
+  const members = membersResult.data || []
+  const lastMonthMembers = lastMonthMembersResult.data || []
+  const payments = paymentsResult.data || []
+  const lastMonthPayments = lastMonthPaymentsResult.data || []
+  const specialClasses = specialClassesResult.data || []
 
   const activeMembers = members.filter((m) => m.status === "active").length
-  const totalRevenue = payments.filter((p) => p.status === "paid").reduce((sum: number, p) => sum + p.amount, 0)
+  const totalMembers = members.length
+  const lastMonthTotal = lastMonthMembers.length || 1
+  const membersGrowth = Math.round(((totalMembers - lastMonthTotal) / lastMonthTotal) * 100)
+
+  // Calcular ingresos del mes desglosados por tipo de moneda
+  const bsMethods = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
+  const usdtMethods = ["USDT"]
+  const usdCashMethods = ["Efectivo", "Transferencia"]
+  
+  const paidPayments = payments.filter((p: any) => p.status === "paid")
+  const monthlyRevenueByType = {
+    bs: paidPayments.filter((p: any) => bsMethods.includes(p.method)).reduce((sum: number, p: any) => sum + Number(p.amount), 0),
+    usdCash: paidPayments.filter((p: any) => usdCashMethods.includes(p.method)).reduce((sum: number, p: any) => sum + Number(p.amount), 0),
+    usdt: paidPayments.filter((p: any) => usdtMethods.includes(p.method)).reduce((sum: number, p: any) => sum + Number(p.amount), 0),
+  }
+  
+  const monthlyRevenue = paidPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+  const lastMonthRevenue = lastMonthPayments.filter((p) => p.status === "paid").reduce((sum, p) => sum + Number(p.amount), 0) || 1
+  const revenueGrowth = Math.round(((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
+
   const activePlans = plansResult.data?.length || 0
+  const renewalRate = totalMembers > 0 ? Math.round((activeMembers / totalMembers) * 100) : 0
+  const totalEnrolled = specialClasses.reduce((sum, c) => sum + (c.enrolled || 0), 0)
+  const totalCapacity = specialClasses.reduce((sum, c) => sum + c.capacity, 0)
 
-  const totalMembers = members.length || 1
-  const renewalRate = Math.round((activeMembers / totalMembers) * 100)
-
-  return { activeMembers, totalRevenue, activePlans, renewalRate }
+  return {
+    activeMembers, totalMembers, membersGrowth, monthlyRevenue, monthlyRevenueByType, revenueGrowth,
+    activePlans, renewalRate, specialClasses: specialClasses.length, totalEnrolled, totalCapacity,
+  }
 }
 
 export async function getRecentActivity() {
   const supabase = await createClient()
 
-  const { data } = await supabase
-    .from("payments")
-    .select("created_at, status, members(name)")
+  const { data: activities } = await supabase
+    .from("activity_log")
+    .select("*")
     .order("created_at", { ascending: false })
-    .limit(5)
+    .limit(10)
 
-  const payments = (data || []) as PaymentWithRelations[]
+  if (!activities || activities.length === 0) return []
 
-  return payments.map((p) => ({
-    user: p.members?.name || "Usuario",
-    action: p.status === "paid" ? "Pago de mensualidad" : "Pago pendiente",
-    time: formatTimeAgo(new Date(p.created_at || "")),
+  return activities.map((activity: any) => ({
+    user: activity.admin_name || "Sistema",
+    action: formatActivityAction(activity),
+    time: formatTimeAgo(new Date(activity.created_at)),
+    type: getActivityType(activity.entity_type),
   }))
 }
+
+function formatActivityAction(activity: any): string {
+  const { action, entity_name, details } = activity
+  switch (action) {
+    case "payment_registered": return `Registró pago de ${entity_name || "cliente"} por $${details?.amount || 0}`
+    case "payment_deleted": return `Eliminó pago de ${entity_name || "cliente"}`
+    case "member_created": return `Registró miembro: ${entity_name}`
+    case "member_updated": return `Actualizó miembro: ${entity_name}`
+    case "member_deleted": return `Eliminó miembro: ${entity_name}`
+    case "class_created": return `Creó clase: ${entity_name}`
+    case "class_deleted": return `Eliminó clase: ${entity_name}`
+    case "class_payment_registered": return `Pago de clase: ${entity_name}`
+    case "class_payment_deleted": return `Eliminó pago de clase`
+    case "rate_updated": return `Actualizó tasa ${entity_name} a ${details?.rate}`
+    default: return `${action}: ${entity_name || ""}`
+  }
+}
+
+function getActivityType(entityType: string): string {
+  switch (entityType) {
+    case "payment": case "special_class_payment": return "payment"
+    case "member": return "member"
+    case "special_class": return "class"
+    default: return "other"
+  }
+}
+
 
 export async function getUpcomingPayments() {
   const supabase = await createClient()
 
   const { data } = await supabase
-    .from("payments")
-    .select("due_date, members(name), plans(name)")
-    .eq("status", "pending")
-    .order("due_date", { ascending: true })
-    .limit(4)
+    .from("members")
+    .select("id, name, payment_date, plans(name)")
+    .eq("status", "active")
+    .not("payment_date", "is", null)
+    .order("payment_date", { ascending: true })
+    .limit(5)
 
-  const payments = (data || []) as UpcomingPayment[]
+  if (!data) return []
 
-  return payments.map((p) => ({
-    name: p.members?.name || "Usuario",
-    plan: p.plans?.name || "Plan",
-    days: Math.ceil((new Date(p.due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-  }))
+  return data.map((m: any) => {
+    const paymentDate = new Date(m.payment_date)
+    const today = new Date()
+    const diffTime = paymentDate.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    return { id: m.id, name: m.name, plan: m.plans?.name || "Sin plan", days: diffDays, dueDate: m.payment_date }
+  })
+}
+
+export async function getMonthlyRevenueChart() {
+  const supabase = await createClient()
+  const months = []
+  const now = new Date()
+
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    months.push({
+      month: date.toLocaleDateString("es-ES", { month: "short" }),
+      start: date.toISOString(),
+      end: new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString(),
+    })
+  }
+
+  const results = await Promise.all(
+    months.map(async (m) => {
+      const { data } = await supabase
+        .from("payments")
+        .select("amount")
+        .eq("status", "paid")
+        .gte("created_at", m.start)
+        .lte("created_at", m.end)
+
+      const total = data?.reduce((sum, p) => sum + Number(p.amount), 0) || 0
+      return { month: m.month, revenue: total }
+    })
+  )
+
+  return results
 }
 
 function formatTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 0) return "Próximamente"
   if (seconds < 60) return "Hace unos segundos"
-  if (seconds < 3600) return `Hace ${Math.floor(seconds / 60)} minutos`
+  if (seconds < 3600) return `Hace ${Math.floor(seconds / 60)} min`
   if (seconds < 86400) return `Hace ${Math.floor(seconds / 3600)} horas`
   return `Hace ${Math.floor(seconds / 86400)} días`
 }

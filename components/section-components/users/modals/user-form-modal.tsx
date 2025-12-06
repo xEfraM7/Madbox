@@ -44,6 +44,8 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
     mutationFn: (data: FormData) => createMember(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
       toast.success("Cliente creado", { description: `${variables.name} ha sido registrado correctamente.` })
       onOpenChange(false)
     },
@@ -54,6 +56,8 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
     mutationFn: (data: FormData) => updateMember(user.id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
       toast.success("Cliente actualizado", { description: `${variables.name} ha sido actualizado correctamente.` })
       onOpenChange(false)
     },

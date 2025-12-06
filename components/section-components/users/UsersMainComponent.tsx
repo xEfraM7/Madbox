@@ -46,6 +46,8 @@ export default function UsersMainComponent() {
     mutationFn: (id: string) => deleteMember(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
       toast.success("Cliente eliminado", { description: `${clientToAction?.name} ha sido eliminado correctamente.` })
       setDeleteDialogOpen(false)
       setClientToAction(null)
@@ -135,8 +137,8 @@ export default function UsersMainComponent() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Correo</TableHead>
-                      <TableHead>Plan</TableHead>
+                      <TableHead className="hidden sm:table-cell">Correo</TableHead>
+                      <TableHead className="hidden md:table-cell">Plan</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
@@ -148,12 +150,17 @@ export default function UsersMainComponent() {
                       </TableRow>
                     ) : (
                       filteredClients.map((client: any) => (
-                        <TableRow key={client.id}>
-                          <TableCell className="font-medium">{client.name}</TableCell>
-                          <TableCell className="text-muted-foreground">{client.email}</TableCell>
-                          <TableCell><Badge variant="outline">{client.plans?.name || "Sin plan"}</Badge></TableCell>
+                        <TableRow key={client.id} className="cursor-pointer" onClick={() => { setSelectedClient(client); setIsDetailModalOpen(true) }}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{client.name}</p>
+                              <p className="text-xs text-muted-foreground sm:hidden">{client.email}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-muted-foreground">{client.email}</TableCell>
+                          <TableCell className="hidden md:table-cell"><Badge variant="outline">{client.plans?.name || "Sin plan"}</Badge></TableCell>
                           <TableCell><Badge variant={statusConfig[client.status as keyof typeof statusConfig]?.variant || "secondary"}>{statusConfig[client.status as keyof typeof statusConfig]?.label || client.status}</Badge></TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                               <DropdownMenuContent align="end">

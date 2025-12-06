@@ -27,9 +27,12 @@ interface FormData {
   plan_id: string
   amount: string
   method: string
+  reference: string
   payment_date: string
   due_date: string
 }
+
+const METHODS_WITH_REFERENCE = ["Pago Movil", "Transferencia", "Transferencia BS", "USDT"]
 
 function calculateDueDate(paymentDate: string): string {
   const date = new Date(paymentDate)
@@ -42,7 +45,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   const initialized = useRef(false)
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    defaultValues: { member_id: "", plan_id: "", amount: "", method: "Efectivo", payment_date: "", due_date: "" }
+    defaultValues: { member_id: "", plan_id: "", amount: "", method: "Efectivo", reference: "", payment_date: "", due_date: "" }
   })
 
   const member_id = watch("member_id")
@@ -75,6 +78,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           plan_id: payment.plan_id || "",
           amount: payment.amount?.toString() || "",
           method: payment.method || "Efectivo",
+          reference: payment.reference || "",
           payment_date: payment.payment_date || "",
           due_date: payment.due_date || ""
         })
@@ -85,6 +89,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           plan_id: payment.plan_id || "", 
           amount: memberPlan?.price?.toString() || "", 
           method: "Efectivo", 
+          reference: "",
           payment_date: today,
           due_date: calculateDueDate(today)
         })
@@ -94,6 +99,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           plan_id: "", 
           amount: "", 
           method: "Efectivo", 
+          reference: "",
           payment_date: today,
           due_date: calculateDueDate(today)
         })
@@ -132,7 +138,9 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     mutationFn: (data: any) => createPayment(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] })
+      queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["members"] })
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
       toast.success("Pago registrado", { description: "El pago ha sido registrado correctamente." })
       onOpenChange(false)
     },
@@ -145,6 +153,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     mutationFn: (data: any) => updatePayment(payment.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] })
+      queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["members"] })
       toast.success("Pago actualizado", { description: "Los cambios han sido guardados." })
       onOpenChange(false)
@@ -160,6 +169,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       plan_id: data.plan_id,
       amount: parseFloat(data.amount),
       method: data.method,
+      reference: METHODS_WITH_REFERENCE.includes(data.method) ? data.reference : null,
       status: "paid",
       payment_date: data.payment_date || null,
       due_date: data.due_date
@@ -204,7 +214,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="amount">Monto</Label>
                 <Input 
@@ -221,17 +231,29 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
                 <Select value={method} onValueChange={(value) => setValue("method", value)}>
                   <SelectTrigger><SelectValue placeholder="Selecciona método" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Efectivo">Efectivo</SelectItem>
+                    <SelectItem value="Efectivo">Efectivo USD</SelectItem>
                     <SelectItem value="Pago Movil">Pago Móvil</SelectItem>
                     <SelectItem value="Efectivo bs">Efectivo Bs</SelectItem>
                     <SelectItem value="Transferencia">Transferencia</SelectItem>
+                    <SelectItem value="Transferencia BS">Transferencia BS</SelectItem>
                     <SelectItem value="USDT">USDT</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {METHODS_WITH_REFERENCE.includes(method) && (
+              <div className="grid gap-2">
+                <Label htmlFor="reference">Referencia</Label>
+                <Input 
+                  id="reference" 
+                  {...register("reference")} 
+                  placeholder="Número de referencia o hash" 
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="payment_date">Fecha de pago</Label>
                 <DateInput 

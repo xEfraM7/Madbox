@@ -206,8 +206,8 @@ export default function RolesMainComponent() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Nombre</TableHead>
-                          <TableHead>Correo</TableHead>
-                          <TableHead>Rol</TableHead>
+                          <TableHead className="hidden sm:table-cell">Correo</TableHead>
+                          <TableHead className="hidden md:table-cell">Rol</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
@@ -220,9 +220,15 @@ export default function RolesMainComponent() {
                         ) : (
                           admins.map((admin: any) => (
                             <TableRow key={admin.id}>
-                              <TableCell className="font-medium">{admin.name}</TableCell>
-                              <TableCell className="text-muted-foreground">{admin.email}</TableCell>
-                              <TableCell><Badge variant="outline">{admin.roles?.name || "Sin rol"}</Badge></TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{admin.name}</p>
+                                  <p className="text-xs text-muted-foreground sm:hidden">{admin.email}</p>
+                                  <p className="text-xs text-muted-foreground md:hidden sm:block hidden">{admin.roles?.name || "Sin rol"}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell text-muted-foreground">{admin.email}</TableCell>
+                              <TableCell className="hidden md:table-cell"><Badge variant="outline">{admin.roles?.name || "Sin rol"}</Badge></TableCell>
                               <TableCell>
                                 <Badge variant={admin.status === "active" ? "default" : "secondary"}>
                                   {admin.status === "active" ? "Activo" : "Inactivo"}
@@ -270,10 +276,10 @@ export default function RolesMainComponent() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Email</TableHead>
-                          <TableHead>Fecha de registro</TableHead>
-                          <TableHead>Último acceso</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Rol</TableHead>
+                          <TableHead className="hidden lg:table-cell">Fecha de registro</TableHead>
+                          <TableHead className="hidden lg:table-cell">Último acceso</TableHead>
+                          <TableHead className="hidden sm:table-cell">Estado</TableHead>
+                          <TableHead className="hidden md:table-cell">Rol</TableHead>
                           <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -288,19 +294,28 @@ export default function RolesMainComponent() {
                             const roleName = userAdmin?.roles?.name
                             return (
                               <TableRow key={user.id}>
-                                <TableCell className="font-medium">{user.email}</TableCell>
-                                <TableCell className="text-muted-foreground">
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium truncate max-w-[150px] sm:max-w-none">{user.email}</p>
+                                    <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                                      <Badge variant={user.email_confirmed_at ? "default" : "secondary"} className="text-xs">
+                                        {user.email_confirmed_at ? "Verificado" : "Pendiente"}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="hidden lg:table-cell text-muted-foreground">
                                   {user.created_at ? new Date(user.created_at).toLocaleDateString("es-ES") : "-"}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">
+                                <TableCell className="hidden lg:table-cell text-muted-foreground">
                                   {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString("es-ES") : "Nunca"}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="hidden sm:table-cell">
                                   <Badge variant={user.email_confirmed_at ? "default" : "secondary"}>
                                     {user.email_confirmed_at ? "Verificado" : "Pendiente"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="hidden md:table-cell">
                                   {roleName ? (
                                     <Badge variant="outline" className={roleName === "Super Admin" || roleName === "Admin" ? "text-primary border-primary" : ""}>
                                       {roleName === "Super Admin" || roleName === "Admin" ? <Shield className="mr-1 h-3 w-3" /> : null}

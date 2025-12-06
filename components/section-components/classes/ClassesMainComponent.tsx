@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Plus, MoreVertical, Edit, Trash2, Calendar, Clock, Loader2 } from "lucide-react"
+import { Plus, MoreVertical, Edit, Trash2, Calendar, Clock, Loader2, Banknote, DollarSign, Bitcoin } from "lucide-react"
 import { ClassFormModal } from "./modals/class-form-modal"
 import { SpecialPaymentModal } from "./modals/special-payment-modal"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { getSpecialClasses, deleteSpecialClass, getSpecialClassPayments } from "@/lib/actions/classes"
+import { PaymentDetailModal } from "@/components/shared/payment-detail-modal"
+import { getSpecialClasses, deleteSpecialClass, getSpecialClassPayments, deleteSpecialClassPayment } from "@/lib/actions/classes"
+import { getSpecialClassPaymentsFundsSummary, getExchangeRates } from "@/lib/actions/funds"
 
 export default function ClassesMainComponent() {
   const queryClient = useQueryClient()
@@ -21,6 +23,11 @@ export default function ClassesMainComponent() {
   const [selectedClass, setSelectedClass] = useState<any>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [classToDelete, setClassToDelete] = useState<any>(null)
+  const [deletePaymentDialogOpen, setDeletePaymentDialogOpen] = useState(false)
+  const [paymentToDelete, setPaymentToDelete] = useState<any>(null)
+  const [selectedRate, setSelectedRate] = useState<"bcv" | "usdt" | "cash">("bcv")
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [detailPayment, setDetailPayment] = useState<any>(null)
 
   const { data: classes = [], isLoading: loadingClasses } = useQuery({
     queryKey: ["special-classes"],
@@ -31,6 +38,37 @@ export default function ClassesMainComponent() {
     queryKey: ["special-class-payments"],
     queryFn: getSpecialClassPayments,
   })
+
+  const { data: fundsSummary } = useQuery({
+    queryKey: ["special-class-funds-summary"],
+    queryFn: getSpecialClassPaymentsFundsSummary,
+  })
+
+  const { data: exchangeRates = [] } = useQuery({
+    queryKey: ["exchange-rates"],
+    queryFn: getExchangeRates,
+  })
+
+  const bcvRate = exchangeRates.find((r: any) => r.type === "BCV")?.rate || 1
+  const usdtRate = exchangeRates.find((r: any) => r.type === "USDT")?.rate || 1
+
+  const getRateValue = () => {
+    switch (selectedRate) {
+      case "bcv": return bcvRate
+      case "usdt": return usdtRate
+      case "cash": return usdtRate // Efectivo usa la misma tasa que USDT
+      default: return bcvRate
+    }
+  }
+
+  const getRateLabel = () => {
+    switch (selectedRate) {
+      case "bcv": return "BCV"
+      case "usdt": return "USDT"
+      case "cash": return "Efectivo"
+      default: return "BCV"
+    }
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteSpecialClass(id),
@@ -45,9 +83,32 @@ export default function ClassesMainComponent() {
     },
   })
 
+  const deletePaymentMutation = useMutation({
+    mutationFn: (id: string) => deleteSpecialClassPayment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["special-class-payments"] })
+      queryClient.invalidateQueries({ queryKey: ["special-class-funds-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
+      toast.success("Pago eliminado", { description: "El pago ha sido eliminado correctamente." })
+      setDeletePaymentDialogOpen(false)
+      setPaymentToDelete(null)
+    },
+    onError: () => {
+      toast.error("Error", { description: "No se pudo eliminar el pago." })
+    },
+  })
+
   const formatDate = (date: string) => {
     if (!date) return "-"
     return new Date(date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
+  }
+
+  const formatAmount = (amount: number, method: string) => {
+    const bsMethods = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
+    if (bsMethods.includes(method)) {
+      return `Bs. ${amount.toLocaleString("es-ES", { minimumFractionDigits: 2 })}`
+    }
+    return `$${amount.toFixed(2)}`
   }
 
   const parseSchedule = (schedule: string) => {
@@ -68,7 +129,16 @@ export default function ClassesMainComponent() {
     return { date: schedule, time: null }
   }
 
-  const totalRevenue = payments.filter((p: any) => p.status === "paid").reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+  // Calcular ingresos totales en USD según la tasa seleccionada
+  const calculateTotalInUsd = () => {
+    const bs = fundsSummary?.bs || 0
+    const usdCash = fundsSummary?.usdCash || 0
+    const usdt = fundsSummary?.usdt || 0
+    const rate = getRateValue()
+    
+    const bsInUsd = bs / rate
+    return bsInUsd + usdCash + usdt
+  }
 
   return (
     <DashboardLayout>
@@ -80,21 +150,62 @@ export default function ClassesMainComponent() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Clases</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{classes.length}</div>
+              <div className="text-2xl font-bold">{classes.length}</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos por Clases</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos Totales</CardTitle>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    Tasa {getRateLabel()}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-500">${totalRevenue.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-green-500">${calculateTotalInUsd().toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">Bs convertidos a {getRateLabel()}: {getRateValue().toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Bolso Bolívares</CardTitle>
+              <Banknote className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Bs. {(fundsSummary?.bs || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })}</div>
+              <p className="text-xs text-muted-foreground">≈ ${((fundsSummary?.bs || 0) / bcvRate).toFixed(2)} USD</p>
+            </CardContent>
+          </Card>
+          <Card className="border-green-500/20 bg-green-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Bolso USD Efectivo</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${(fundsSummary?.usdCash || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-orange-500/20 bg-orange-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Bolso USDT</CardTitle>
+              <Bitcoin className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${(fundsSummary?.usdt || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })} USDT</div>
             </CardContent>
           </Card>
         </div>
@@ -199,25 +310,39 @@ export default function ClassesMainComponent() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Cliente</TableHead>
-                        <TableHead>Clase</TableHead>
                         <TableHead>Monto</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead>Fecha</TableHead>
+                        <TableHead className="hidden sm:table-cell">Clase</TableHead>
+                        <TableHead className="hidden md:table-cell">Método</TableHead>
+                        <TableHead className="hidden lg:table-cell">Fecha</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {payments.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No hay pagos registrados</TableCell>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No hay pagos registrados</TableCell>
                         </TableRow>
                       ) : (
                         payments.map((payment: any) => (
-                          <TableRow key={payment.id}>
-                            <TableCell className="font-medium">{payment.members?.name || "Sin cliente"}</TableCell>
-                            <TableCell>{payment.special_classes?.name || "Sin clase"}</TableCell>
-                            <TableCell className="font-medium">${Number(payment.amount).toFixed(2)}</TableCell>
-                            <TableCell className="text-muted-foreground">{payment.method || "-"}</TableCell>
-                            <TableCell className="text-muted-foreground">{formatDate(payment.payment_date)}</TableCell>
+                          <TableRow key={payment.id} className="cursor-pointer" onClick={() => { setDetailPayment(payment); setDetailModalOpen(true) }}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{payment.members?.name || "Sin cliente"}</p>
+                                <p className="text-xs text-muted-foreground sm:hidden">{payment.special_classes?.name || "Sin clase"}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">{formatAmount(Number(payment.amount), payment.method)}</TableCell>
+                            <TableCell className="hidden sm:table-cell">{payment.special_classes?.name || "Sin clase"}</TableCell>
+                            <TableCell className="hidden md:table-cell text-muted-foreground">{payment.method || "-"}</TableCell>
+                            <TableCell className="hidden lg:table-cell text-muted-foreground">{formatDate(payment.payment_date)}</TableCell>
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => { setPaymentToDelete(payment); setDeletePaymentDialogOpen(true) }} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Eliminar</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -232,6 +357,7 @@ export default function ClassesMainComponent() {
 
       <ClassFormModal open={isClassModalOpen} onOpenChange={setIsClassModalOpen} classItem={selectedClass} />
       <SpecialPaymentModal open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen} />
+      <PaymentDetailModal open={detailModalOpen} onOpenChange={setDetailModalOpen} payment={detailPayment} />
 
       <ConfirmDialog
         open={deleteDialogOpen}
@@ -242,6 +368,17 @@ export default function ClassesMainComponent() {
         variant="danger"
         onConfirm={() => deleteMutation.mutate(classToDelete?.id)}
         isLoading={deleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={deletePaymentDialogOpen}
+        onOpenChange={setDeletePaymentDialogOpen}
+        title="Eliminar pago"
+        description={`¿Estás seguro de que deseas eliminar este pago de $${paymentToDelete?.amount}? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        variant="danger"
+        onConfirm={() => deletePaymentMutation.mutate(paymentToDelete?.id)}
+        isLoading={deletePaymentMutation.isPending}
       />
     </DashboardLayout>
   )

@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { TablesInsert, TablesUpdate } from "@/types/database"
+import { logActivity } from "./activity"
 
 export async function getMembers() {
   const supabase = await createClient()
@@ -62,7 +63,16 @@ export async function createMember(member: TablesInsert<"members">) {
     .single()
 
   if (error) throw error
+
+  await logActivity({
+    action: "member_created",
+    entityType: "member",
+    entityId: data.id,
+    entityName: data.name,
+  })
+
   revalidatePath("/dashboard/users")
+  revalidatePath("/dashboard")
   return data
 }
 
@@ -76,16 +86,40 @@ export async function updateMember(id: string, member: TablesUpdate<"members">) 
     .single()
 
   if (error) throw error
+
+  await logActivity({
+    action: "member_updated",
+    entityType: "member",
+    entityId: data.id,
+    entityName: data.name,
+  })
+
   revalidatePath("/dashboard/users")
+  revalidatePath("/dashboard")
   return data
 }
 
 export async function deleteMember(id: string) {
   const supabase = await createClient()
-  const { error } = await supabase.from("members").delete().eq("id", id)
+  
+  const { data: member } = await supabase
+    .from("members")
+    .select("name")
+    .eq("id", id)
+    .single()
 
+  const { error } = await supabase.from("members").delete().eq("id", id)
   if (error) throw error
+
+  await logActivity({
+    action: "member_deleted",
+    entityType: "member",
+    entityId: id,
+    entityName: member?.name,
+  })
+
   revalidatePath("/dashboard/users")
+  revalidatePath("/dashboard")
 }
 
 export async function toggleFreeze(id: string, frozen: boolean) {
