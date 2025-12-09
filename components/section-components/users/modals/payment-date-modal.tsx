@@ -42,15 +42,6 @@ export function PaymentDateModal({ open, onOpenChange, user }: PaymentDateModalP
 
   const validateDate = (date: string) => {
     if (!date) return "Selecciona una fecha"
-    
-    const selectedDate = new Date(date)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    if (selectedDate < today) {
-      return "La fecha de pago no puede ser anterior a hoy"
-    }
-    
     return ""
   }
 
@@ -85,7 +76,7 @@ export function PaymentDateModal({ open, onOpenChange, user }: PaymentDateModalP
                 {error}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">La fecha debe ser igual o posterior a hoy</p>
+            <p className="text-xs text-muted-foreground">Puedes seleccionar cualquier fecha, incluso anterior a hoy</p>
           </div>
         </div>
         <div className="flex gap-2 justify-end">
