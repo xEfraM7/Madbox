@@ -122,6 +122,7 @@ export type Database = {
           frozen: boolean | null
           id: string
           name: string
+          payment_date: string | null
           phone: string | null
           plan_id: string | null
           start_date: string | null
@@ -134,6 +135,7 @@ export type Database = {
           frozen?: boolean | null
           id?: string
           name: string
+          payment_date?: string | null
           phone?: string | null
           plan_id?: string | null
           start_date?: string | null
@@ -146,6 +148,7 @@ export type Database = {
           frozen?: boolean | null
           id?: string
           name?: string
+          payment_date?: string | null
           phone?: string | null
           plan_id?: string | null
           start_date?: string | null
@@ -285,6 +288,7 @@ export type Database = {
           member_id: string | null
           method: string | null
           payment_date: string | null
+          reference: string | null
           status: string | null
           updated_at: string | null
         }
@@ -296,6 +300,7 @@ export type Database = {
           member_id?: string | null
           method?: string | null
           payment_date?: string | null
+          reference?: string | null
           status?: string | null
           updated_at?: string | null
         }
@@ -307,6 +312,7 @@ export type Database = {
           member_id?: string | null
           method?: string | null
           payment_date?: string | null
+          reference?: string | null
           status?: string | null
           updated_at?: string | null
         }

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { DateInput } from "@/components/ui/date-input"
 import { createMember, updateMember } from "@/lib/actions/members"
 import { createPayment } from "@/lib/actions/payments"
 import { getPlans } from "@/lib/actions/plans"
@@ -35,6 +36,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
   const [paymentMethod, setPaymentMethod] = useState("Efectivo")
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentReference, setPaymentReference] = useState("")
+  const [paymentDate, setPaymentDate] = useState("")
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: { name: "", email: "", phone: "", plan_id: "" }
@@ -50,7 +52,8 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
     mutationFn: async (data: FormData) => {
       // Calcular fechas
       const today = new Date().toISOString().split("T")[0]
-      const dueDate = new Date()
+      const selectedPaymentDate = paymentDate || today
+      const dueDate = new Date(selectedPaymentDate)
       dueDate.setDate(dueDate.getDate() + 30)
       const dueDateStr = dueDate.toISOString().split("T")[0]
 
@@ -74,7 +77,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
             method: paymentMethod,
             reference: methodsWithReference.includes(paymentMethod) && paymentReference ? paymentReference : null,
             status: "paid",
-            payment_date: today,
+            payment_date: selectedPaymentDate,
             due_date: dueDateStr
           })
         }
@@ -108,7 +111,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
   })
 
   const updateMutation = useMutation({
-    mutationFn: (data: FormData & { payment_date?: string }) => updateMember(user.id, data),
+    mutationFn: (data: FormData) => updateMember(user.id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
@@ -130,13 +133,14 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
         setPaymentMethod("Efectivo")
         setPaymentAmount("")
         setPaymentReference("")
+        setPaymentDate("")
       }
     }
   }, [user, open, reset])
 
   const onSubmit = (data: FormData) => {
     if (user) {
-      updateMutation.mutate({ ...data, payment_date: user.payment_date })
+      updateMutation.mutate(data)
     } else {
       createMutation.mutate(data)
     }
@@ -148,13 +152,13 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{user ? "Editar Cliente" : "Agregar Nuevo Cliente"}</DialogTitle>
           <DialogDescription>{user ? "Modifica la información del cliente" : "Completa el formulario para registrar un nuevo cliente"}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1">
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre completo</Label>
               <Input id="name" {...register("name", { required: "El nombre es requerido" })} placeholder="Ej: Juan Pérez" />
@@ -245,6 +249,15 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Fecha de pago</Label>
+                      <DateInput 
+                        value={paymentDate}
+                        onChange={(value) => setPaymentDate(value)}
+                        placeholder="Selecciona fecha"
+                      />
+                      <p className="text-xs text-muted-foreground">Por defecto es hoy. El vencimiento será 30 días después.</p>
                     </div>
                     {["Pago Movil", "Transferencia", "Transferencia BS", "USDT"].includes(paymentMethod) && (
                       <div className="grid gap-2">
