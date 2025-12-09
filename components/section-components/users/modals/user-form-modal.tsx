@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -9,16 +9,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DateInput } from "@/components/ui/date-input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { createMember, updateMember } from "@/lib/actions/members"
+import { createPayment } from "@/lib/actions/payments"
 import { getPlans } from "@/lib/actions/plans"
+import { sendWelcomeEmail } from "@/lib/actions/email"
 
 interface FormData {
   name: string
   email: string
   phone: string
   plan_id: string
-  payment_date: string
 }
 
 interface UserFormModalProps {
@@ -29,9 +30,14 @@ interface UserFormModalProps {
 
 export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) {
   const queryClient = useQueryClient()
+  const [registerFirstPayment, setRegisterFirstPayment] = useState(true)
+  const [sendWelcome, setSendWelcome] = useState(true)
+  const [paymentMethod, setPaymentMethod] = useState("Efectivo")
+  const [paymentAmount, setPaymentAmount] = useState("")
+  const [paymentReference, setPaymentReference] = useState("")
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    defaultValues: { name: "", email: "", phone: "", plan_id: "", payment_date: "" }
+    defaultValues: { name: "", email: "", phone: "", plan_id: "" }
   })
 
   const { data: plans = [] } = useQuery({
@@ -41,19 +47,68 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => createMember(data),
+    mutationFn: async (data: FormData) => {
+      // Calcular fechas
+      const today = new Date().toISOString().split("T")[0]
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 30)
+      const dueDateStr = dueDate.toISOString().split("T")[0]
+
+      // Crear miembro con o sin fecha de pago
+      const memberData = {
+        ...data,
+        payment_date: registerFirstPayment ? dueDateStr : null
+      }
+      const member = await createMember(memberData)
+      
+      // Si se debe registrar el primer pago
+      if (registerFirstPayment && member?.id && data.plan_id) {
+        const selectedPlan = plans.find((p: any) => p.id === data.plan_id)
+        const amount = paymentAmount ? parseFloat(paymentAmount) : selectedPlan?.price || 0
+        if (amount > 0) {
+          const methodsWithReference = ["Pago Movil", "Transferencia", "Transferencia BS", "USDT"]
+          await createPayment({
+            member_id: member.id,
+            plan_id: data.plan_id,
+            amount: amount,
+            method: paymentMethod,
+            reference: methodsWithReference.includes(paymentMethod) && paymentReference ? paymentReference : null,
+            status: "paid",
+            payment_date: today,
+            due_date: dueDateStr
+          })
+        }
+      }
+      
+      // Enviar email de bienvenida si está habilitado
+      if (sendWelcome && member?.id) {
+        const selectedPlan = plans.find((p: any) => p.id === data.plan_id)
+        sendWelcomeEmail({
+          to: data.email,
+          memberName: data.name,
+          planName: selectedPlan?.name,
+        }).catch(console.error) // No bloquear si falla el email
+      }
+      
+      return member
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
+      queryClient.invalidateQueries({ queryKey: ["payments"] })
+      queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
-      toast.success("Cliente creado", { description: `${variables.name} ha sido registrado correctamente.` })
+      const message = registerFirstPayment 
+        ? `${variables.name} ha sido registrado con su primer pago.`
+        : `${variables.name} ha sido registrado sin pago inicial.`
+      toast.success("Cliente creado", { description: message })
       onOpenChange(false)
     },
     onError: () => toast.error("Error", { description: "No se pudo crear el cliente." }),
   })
 
   const updateMutation = useMutation({
-    mutationFn: (data: FormData) => updateMember(user.id, data),
+    mutationFn: (data: FormData & { payment_date?: string }) => updateMember(user.id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
@@ -67,18 +122,21 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
   useEffect(() => {
     if (open) {
       if (user) {
-        reset({ name: user.name || "", email: user.email || "", phone: user.phone || "", plan_id: user.plan_id || "", payment_date: user.payment_date || "" })
+        reset({ name: user.name || "", email: user.email || "", phone: user.phone || "", plan_id: user.plan_id || "" })
       } else {
-        const nextMonth = new Date()
-        nextMonth.setDate(nextMonth.getDate() + 30)
-        reset({ name: "", email: "", phone: "", plan_id: "", payment_date: nextMonth.toISOString().split("T")[0] })
+        reset({ name: "", email: "", phone: "", plan_id: "" })
+        setRegisterFirstPayment(true)
+        setSendWelcome(true)
+        setPaymentMethod("Efectivo")
+        setPaymentAmount("")
+        setPaymentReference("")
       }
     }
   }, [user, open, reset])
 
   const onSubmit = (data: FormData) => {
     if (user) {
-      updateMutation.mutate(data)
+      updateMutation.mutate({ ...data, payment_date: user.payment_date })
     } else {
       createMutation.mutate(data)
     }
@@ -86,6 +144,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
 
   const isPending = createMutation.isPending || updateMutation.isPending
   const planId = watch("plan_id")
+  const selectedPlan = plans.find((p: any) => p.id === planId)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -108,7 +167,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phone">Teléfono</Label>
-              <Input id="phone" type="tel" {...register("phone")} placeholder="+34 600 000 000" />
+              <Input id="phone" type="tel" {...register("phone")} placeholder="+58 412 000 0000" />
             </div>
             <div className="grid gap-2">
               <Label>Plan</Label>
@@ -116,16 +175,91 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
                 <SelectTrigger><SelectValue placeholder="Selecciona un plan" /></SelectTrigger>
                 <SelectContent>
                   {plans.filter((p: any) => p.active).map((plan: any) => (
-                    <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
+                    <SelectItem key={plan.id} value={plan.id}>{plan.name} - ${Number(plan.price).toFixed(2)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="payment_date">Fecha de pago</Label>
-              <DateInput value={watch("payment_date")} onChange={(value) => setValue("payment_date", value)} />
-              {errors.payment_date && <p className="text-sm text-destructive">{errors.payment_date.message}</p>}
-            </div>
+
+            {!user && planId && (
+              <>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border bg-muted/50">
+                  <Checkbox 
+                    id="firstPayment" 
+                    checked={registerFirstPayment} 
+                    onCheckedChange={(checked) => setRegisterFirstPayment(checked as boolean)} 
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="firstPayment" className="cursor-pointer font-medium">
+                      Registrar primer pago
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {registerFirstPayment 
+                        ? `Se registrará un pago de $${Number(selectedPlan?.price || 0).toFixed(2)} con vencimiento en 30 días`
+                        : "El cliente se registrará sin fecha de pago"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 p-3 rounded-lg border bg-muted/50">
+                  <Checkbox 
+                    id="sendWelcome" 
+                    checked={sendWelcome} 
+                    onCheckedChange={(checked) => setSendWelcome(checked as boolean)} 
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="sendWelcome" className="cursor-pointer font-medium">
+                      Enviar correo de bienvenida
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Se enviará un email de bienvenida al cliente con los detalles de su registro
+                    </p>
+                  </div>
+                </div>
+
+                {registerFirstPayment && (
+                  <div className="space-y-4 p-3 rounded-lg border">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Monto</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder={`${Number(selectedPlan?.price || 0).toFixed(2)}`}
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">Precio del plan: ${Number(selectedPlan?.price || 0).toFixed(2)}</p>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Método de pago</Label>
+                        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Efectivo">Efectivo USD</SelectItem>
+                            <SelectItem value="Pago Movil">Pago Móvil</SelectItem>
+                            <SelectItem value="Efectivo bs">Efectivo Bs</SelectItem>
+                            <SelectItem value="Transferencia">Transferencia</SelectItem>
+                            <SelectItem value="Transferencia BS">Transferencia BS</SelectItem>
+                            <SelectItem value="USDT">USDT</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {["Pago Movil", "Transferencia", "Transferencia BS", "USDT"].includes(paymentMethod) && (
+                      <div className="grid gap-2">
+                        <Label>Referencia</Label>
+                        <Input 
+                          placeholder="Número de referencia o hash"
+                          value={paymentReference}
+                          onChange={(e) => setPaymentReference(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Cancelar</Button>
