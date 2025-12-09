@@ -171,6 +171,7 @@ export type Database = {
           method: string | null
           payment_date: string | null
           plan_id: string | null
+          reference: string | null
           status: string | null
           updated_at: string | null
         }
@@ -183,6 +184,7 @@ export type Database = {
           method?: string | null
           payment_date?: string | null
           plan_id?: string | null
+          reference?: string | null
           status?: string | null
           updated_at?: string | null
         }
@@ -195,6 +197,7 @@ export type Database = {
           method?: string | null
           payment_date?: string | null
           plan_id?: string | null
+          reference?: string | null
           status?: string | null
           updated_at?: string | null
         }

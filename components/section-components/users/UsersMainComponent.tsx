@@ -17,6 +17,7 @@ import { UserDetailModal } from "./modals/user-detail-modal"
 import { PaymentDateModal } from "./modals/payment-date-modal"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { getMembers, deleteMember, toggleFreeze } from "@/lib/actions/members"
+import { getPlans } from "@/lib/actions/plans"
 
 const statusConfig = {
   active: { variant: "default" as const, label: "Activo" },
@@ -40,6 +41,11 @@ export default function UsersMainComponent() {
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["members"],
     queryFn: getMembers,
+  })
+
+  const { data: plans = [] } = useQuery({
+    queryKey: ["plans"],
+    queryFn: getPlans,
   })
 
   const deleteMutation = useMutation({
@@ -112,9 +118,9 @@ export default function UsersMainComponent() {
                 <SelectTrigger><SelectValue placeholder="Filtrar por plan" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los planes</SelectItem>
-                  <SelectItem value="Plan Básico">Básico</SelectItem>
-                  <SelectItem value="Plan Premium">Premium</SelectItem>
-                  <SelectItem value="Plan Anual">Anual</SelectItem>
+                  {plans.map((plan: any) => (
+                    <SelectItem key={plan.id} value={plan.name}>{plan.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

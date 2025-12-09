@@ -59,14 +59,28 @@ export async function logActivity(params: LogActivityParams) {
   revalidatePath("/dashboard")
 }
 
-export async function getActivityLog(limit = 20) {
+export async function getActivityLog(limit = 20, startDate?: string, endDate?: string) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("activity_log")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(limit)
+
+  if (startDate) {
+    query = query.gte("created_at", startDate)
+  }
+
+  if (endDate) {
+    // Agregar un día al endDate para incluir todo el día
+    const end = new Date(endDate)
+    end.setDate(end.getDate() + 1)
+    query = query.lt("created_at", end.toISOString())
+  }
+
+  query = query.limit(limit)
+
+  const { data, error } = await query
 
   if (error) throw error
   return data
