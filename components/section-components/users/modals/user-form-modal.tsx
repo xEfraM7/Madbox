@@ -37,9 +37,16 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentReference, setPaymentReference] = useState("")
   const [paymentDate, setPaymentDate] = useState("")
-  
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    defaultValues: { name: "", email: "", phone: "", plan_id: "" }
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<FormData>({
+    defaultValues: { name: "", email: "", phone: "", plan_id: "" },
   })
 
   const { data: plans = [] } = useQuery({
@@ -50,21 +57,18 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Calcular fechas
       const today = new Date().toISOString().split("T")[0]
       const selectedPaymentDate = paymentDate || today
       const dueDate = new Date(selectedPaymentDate)
       dueDate.setDate(dueDate.getDate() + 30)
       const dueDateStr = dueDate.toISOString().split("T")[0]
 
-      // Crear miembro con o sin fecha de pago
       const memberData = {
         ...data,
-        payment_date: registerFirstPayment ? dueDateStr : null
+        payment_date: dueDateStr,
       }
       const member = await createMember(memberData)
-      
-      // Si se debe registrar el primer pago
+
       if (registerFirstPayment && member?.id && data.plan_id) {
         const selectedPlan = plans.find((p: any) => p.id === data.plan_id)
         const amount = paymentAmount ? parseFloat(paymentAmount) : selectedPlan?.price || 0
@@ -78,21 +82,20 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
             reference: methodsWithReference.includes(paymentMethod) && paymentReference ? paymentReference : null,
             status: "paid",
             payment_date: selectedPaymentDate,
-            due_date: dueDateStr
+            due_date: dueDateStr,
           })
         }
       }
-      
-      // Enviar email de bienvenida si está habilitado
+
       if (sendWelcome && member?.id) {
         const selectedPlan = plans.find((p: any) => p.id === data.plan_id)
         sendWelcomeEmail({
           to: data.email,
           memberName: data.name,
           planName: selectedPlan?.name,
-        }).catch(console.error) // No bloquear si falla el email
+        }).catch(console.error)
       }
-      
+
       return member
     },
     onSuccess: (_, variables) => {
@@ -101,7 +104,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
       queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
-      const message = registerFirstPayment 
+      const message = registerFirstPayment
         ? `${variables.name} ha sido registrado con su primer pago.`
         : `${variables.name} ha sido registrado sin pago inicial.`
       toast.success("Cliente creado", { description: message })
@@ -155,7 +158,9 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{user ? "Editar Cliente" : "Agregar Nuevo Cliente"}</DialogTitle>
-          <DialogDescription>{user ? "Modifica la información del cliente" : "Completa el formulario para registrar un nuevo cliente"}</DialogDescription>
+          <DialogDescription>
+            {user ? "Modifica la información del cliente" : "Completa el formulario para registrar un nuevo cliente"}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
           <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1">
@@ -166,7 +171,12 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Correo electrónico</Label>
-              <Input id="email" type="email" {...register("email", { required: "El correo es requerido", pattern: { value: /^\S+@\S+$/i, message: "Correo inválido" } })} placeholder="correo@ejemplo.com" />
+              <Input
+                id="email"
+                type="email"
+                {...register("email", { required: "El correo es requerido", pattern: { value: /^\S+@\S+$/i, message: "Correo inválido" } })}
+                placeholder="correo@ejemplo.com"
+              />
               {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
             <div className="grid gap-2">
@@ -176,48 +186,54 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
             <div className="grid gap-2">
               <Label>Plan</Label>
               <Select value={planId} onValueChange={(value) => setValue("plan_id", value)}>
-                <SelectTrigger><SelectValue placeholder="Selecciona un plan" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un plan" />
+                </SelectTrigger>
                 <SelectContent>
-                  {plans.filter((p: any) => p.active).map((plan: any) => (
-                    <SelectItem key={plan.id} value={plan.id}>{plan.name} - ${Number(plan.price).toFixed(2)}</SelectItem>
-                  ))}
+                  {plans
+                    .filter((p: any) => p.active)
+                    .map((plan: any) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.name} - ${Number(plan.price).toFixed(2)}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
 
             {!user && planId && (
               <>
+                <div className="grid gap-2">
+                  <Label>Fecha de inicio</Label>
+                  <DateInput value={paymentDate} onChange={(value) => setPaymentDate(value)} placeholder="Selecciona fecha" />
+                  <p className="text-xs text-muted-foreground">Por defecto es hoy. El vencimiento será 30 días después.</p>
+                </div>
+
                 <div className="flex items-center space-x-3 p-3 rounded-lg border bg-muted/50">
-                  <Checkbox 
-                    id="firstPayment" 
-                    checked={registerFirstPayment} 
-                    onCheckedChange={(checked) => setRegisterFirstPayment(checked as boolean)} 
+                  <Checkbox
+                    id="firstPayment"
+                    checked={registerFirstPayment}
+                    onCheckedChange={(checked) => setRegisterFirstPayment(checked as boolean)}
                   />
                   <div className="flex-1">
                     <Label htmlFor="firstPayment" className="cursor-pointer font-medium">
                       Registrar primer pago
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {registerFirstPayment 
-                        ? `Se registrará un pago de $${Number(selectedPlan?.price || 0).toFixed(2)} con vencimiento en 30 días`
-                        : "El cliente se registrará sin fecha de pago"}
+                      {registerFirstPayment
+                        ? `Se registrará un pago de $${Number(selectedPlan?.price || 0).toFixed(2)}`
+                        : "Solo se registrará la fecha de vencimiento"}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3 p-3 rounded-lg border bg-muted/50">
-                  <Checkbox 
-                    id="sendWelcome" 
-                    checked={sendWelcome} 
-                    onCheckedChange={(checked) => setSendWelcome(checked as boolean)} 
-                  />
+                  <Checkbox id="sendWelcome" checked={sendWelcome} onCheckedChange={(checked) => setSendWelcome(checked as boolean)} />
                   <div className="flex-1">
                     <Label htmlFor="sendWelcome" className="cursor-pointer font-medium">
                       Enviar correo de bienvenida
                     </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Se enviará un email de bienvenida al cliente con los detalles de su registro
-                    </p>
+                    <p className="text-xs text-muted-foreground">Se enviará un email de bienvenida al cliente con los detalles de su registro</p>
                   </div>
                 </div>
 
@@ -226,9 +242,9 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label>Monto</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
+                        <Input
+                          type="number"
+                          step="0.01"
                           placeholder={`${Number(selectedPlan?.price || 0).toFixed(2)}`}
                           value={paymentAmount}
                           onChange={(e) => setPaymentAmount(e.target.value)}
@@ -238,7 +254,9 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
                       <div className="grid gap-2">
                         <Label>Método de pago</Label>
                         <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Efectivo">Efectivo USD</SelectItem>
                             <SelectItem value="Pago Movil">Pago Móvil</SelectItem>
@@ -250,23 +268,10 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
                         </Select>
                       </div>
                     </div>
-                    <div className="grid gap-2">
-                      <Label>Fecha de pago</Label>
-                      <DateInput 
-                        value={paymentDate}
-                        onChange={(value) => setPaymentDate(value)}
-                        placeholder="Selecciona fecha"
-                      />
-                      <p className="text-xs text-muted-foreground">Por defecto es hoy. El vencimiento será 30 días después.</p>
-                    </div>
                     {["Pago Movil", "Transferencia", "Transferencia BS", "USDT"].includes(paymentMethod) && (
                       <div className="grid gap-2">
                         <Label>Referencia</Label>
-                        <Input 
-                          placeholder="Número de referencia o hash"
-                          value={paymentReference}
-                          onChange={(e) => setPaymentReference(e.target.value)}
-                        />
+                        <Input placeholder="Número de referencia o hash" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} />
                       </div>
                     )}
                   </div>
@@ -275,8 +280,12 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
             )}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Cancelar</Button>
-            <Button type="submit" disabled={isPending}>{isPending ? "Guardando..." : user ? "Guardar cambios" : "Crear cliente"}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Guardando..." : user ? "Guardar cambios" : "Crear cliente"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
