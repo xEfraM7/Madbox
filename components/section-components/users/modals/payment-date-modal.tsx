@@ -64,6 +64,12 @@ export function PaymentDateModal({ open, onOpenChange, user }: PaymentDateModalP
           <DialogDescription>Selecciona la nueva fecha de pago para {user.name}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {user.payment_date && (
+            <div className="p-3 rounded-lg bg-muted/50 border">
+              <p className="text-xs text-muted-foreground">Fecha actual de vencimiento</p>
+              <p className="font-medium">{new Date(user.payment_date + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}</p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="payment-date">Nueva fecha de pago</Label>
             <DateInput
