@@ -59,8 +59,14 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
     mutationFn: async (data: FormData) => {
       const today = new Date().toISOString().split("T")[0]
       const selectedPaymentDate = paymentDate || today
-      const dueDate = new Date(selectedPaymentDate)
-      dueDate.setDate(dueDate.getDate() + 30)
+      // Calcular fecha de vencimiento: mismo día del mes siguiente
+      const dueDate = new Date(selectedPaymentDate + "T00:00:00")
+      dueDate.setMonth(dueDate.getMonth() + 1)
+      // Ajustar si el día no existe en el mes siguiente
+      const originalDay = new Date(selectedPaymentDate + "T00:00:00").getDate()
+      if (dueDate.getDate() !== originalDay) {
+        dueDate.setDate(0)
+      }
       const dueDateStr = dueDate.toISOString().split("T")[0]
 
       const memberData = {
@@ -206,7 +212,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
                 <div className="grid gap-2">
                   <Label>Fecha de inicio</Label>
                   <DateInput value={paymentDate} onChange={(value) => setPaymentDate(value)} placeholder="Selecciona fecha" />
-                  <p className="text-xs text-muted-foreground">Por defecto es hoy. El vencimiento será 30 días después.</p>
+                  <p className="text-xs text-muted-foreground">Por defecto es hoy. El vencimiento será el mismo día del mes siguiente.</p>
                 </div>
 
                 <div className="flex items-center space-x-3 p-3 rounded-lg border bg-muted/50">

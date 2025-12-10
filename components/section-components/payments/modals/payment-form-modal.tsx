@@ -35,8 +35,13 @@ interface FormData {
 const METHODS_WITH_REFERENCE = ["Pago Movil", "Transferencia", "Transferencia BS", "USDT"]
 
 function calculateDueDate(paymentDate: string): string {
-  const date = new Date(paymentDate)
-  date.setDate(date.getDate() + 30)
+  const date = new Date(paymentDate + "T00:00:00")
+  const originalDay = date.getDate()
+  date.setMonth(date.getMonth() + 1)
+  // Ajustar si el día no existe en el mes siguiente (ej: 31 -> 28 feb)
+  if (date.getDate() !== originalDay) {
+    date.setDate(0)
+  }
   return date.toISOString().split("T")[0]
 }
 
