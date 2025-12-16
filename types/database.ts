@@ -173,6 +173,7 @@ export type Database = {
           member_id: string | null
           method: string | null
           payment_date: string | null
+          payment_rate: number | null
           plan_id: string | null
           reference: string | null
           status: string | null
@@ -186,6 +187,7 @@ export type Database = {
           member_id?: string | null
           method?: string | null
           payment_date?: string | null
+          payment_rate?: number | null
           plan_id?: string | null
           reference?: string | null
           status?: string | null
@@ -199,6 +201,7 @@ export type Database = {
           member_id?: string | null
           method?: string | null
           payment_date?: string | null
+          payment_rate?: number | null
           plan_id?: string | null
           reference?: string | null
           status?: string | null
@@ -288,6 +291,7 @@ export type Database = {
           member_id: string | null
           method: string | null
           payment_date: string | null
+          payment_rate: number | null
           reference: string | null
           status: string | null
           updated_at: string | null
@@ -300,6 +304,7 @@ export type Database = {
           member_id?: string | null
           method?: string | null
           payment_date?: string | null
+          payment_rate?: number | null
           reference?: string | null
           status?: string | null
           updated_at?: string | null
@@ -312,6 +317,7 @@ export type Database = {
           member_id?: string | null
           method?: string | null
           payment_date?: string | null
+          payment_rate?: number | null
           reference?: string | null
           status?: string | null
           updated_at?: string | null

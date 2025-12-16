@@ -59,9 +59,15 @@ export function PaymentDetailModal({ open, onOpenChange, payment }: PaymentDetai
             <span>{formatDate(payment.payment_date)}</span>
           </div>
           {payment.due_date && (
-            <div className="flex justify-between items-center py-2">
+            <div className="flex justify-between items-center py-2 border-b">
               <span className="text-muted-foreground">Vencimiento</span>
               <span>{formatDate(payment.due_date)}</span>
+            </div>
+          )}
+          {payment.payment_rate && (
+            <div className="flex justify-between items-center py-2">
+              <span className="text-muted-foreground">Tasa del pago</span>
+              <span className="font-medium">{Number(payment.payment_rate).toFixed(2)} Bs/$</span>
             </div>
           )}
         </div>

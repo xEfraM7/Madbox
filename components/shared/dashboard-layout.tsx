@@ -34,7 +34,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [rateModalOpen, setRateModalOpen] = useState(false)
-  const [selectedRateType, setSelectedRateType] = useState<"BCV" | "USDT" | null>(null)
+  const [selectedRateType, setSelectedRateType] = useState<"BCV" | "USDT" | "CUSTOM" | null>(null)
   const pathname = usePathname()
   const { hasAnyPermission, isAdmin } = usePermissions()
 
@@ -60,6 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const bcvRate = exchangeRates.find((r: any) => r.type === "BCV")?.rate || 0
   const usdtRate = exchangeRates.find((r: any) => r.type === "USDT")?.rate || 0
+  const customRate = exchangeRates.find((r: any) => r.type === "CUSTOM")?.rate || 0
 
   // Buscar el admin actual por email
   const currentAdmin = admins.find((admin: any) => admin.email === currentUser?.email)
@@ -150,6 +151,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <span className="text-orange-500 font-medium">USDT</span>
               <span className="text-foreground font-bold">{usdtRate.toFixed(2)}</span>
             </button>
+            <button
+              onClick={() => { setSelectedRateType("CUSTOM"); setRateModalOpen(true) }}
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer text-xs sm:text-sm"
+            >
+              <span className="text-purple-500 font-medium">Custom</span>
+              <span className="text-foreground font-bold">{customRate.toFixed(2)}</span>
+            </button>
           </div>
         </header>
 
@@ -162,7 +170,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         open={rateModalOpen}
         onOpenChange={setRateModalOpen}
         type={selectedRateType}
-        currentRate={selectedRateType === "BCV" ? bcvRate : usdtRate}
+        currentRate={selectedRateType === "BCV" ? bcvRate : selectedRateType === "USDT" ? usdtRate : customRate}
       />
     </div>
   )

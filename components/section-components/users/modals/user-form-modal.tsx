@@ -37,6 +37,9 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentReference, setPaymentReference] = useState("")
   const [paymentDate, setPaymentDate] = useState("")
+  const [paymentRate, setPaymentRate] = useState("")
+
+  const METHODS_IN_BS = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
 
   const {
     register,
@@ -80,6 +83,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
         const amount = paymentAmount ? parseFloat(paymentAmount) : selectedPlan?.price || 0
         if (amount > 0) {
           const methodsWithReference = ["Pago Movil", "Transferencia", "Transferencia BS", "USDT"]
+          const methodsInBs = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
           await createPayment({
             member_id: member.id,
             plan_id: data.plan_id,
@@ -89,6 +93,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
             status: "paid",
             payment_date: selectedPaymentDate,
             due_date: dueDateStr,
+            payment_rate: methodsInBs.includes(paymentMethod) && paymentRate ? parseFloat(paymentRate) : null,
           })
         }
       }
@@ -143,6 +148,7 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
         setPaymentAmount("")
         setPaymentReference("")
         setPaymentDate("")
+        setPaymentRate("")
       }
     }
   }, [user, open, reset])
@@ -278,6 +284,19 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
                       <div className="grid gap-2">
                         <Label>Referencia</Label>
                         <Input placeholder="Número de referencia o hash" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} />
+                      </div>
+                    )}
+                    {METHODS_IN_BS.includes(paymentMethod) && (
+                      <div className="grid gap-2">
+                        <Label>Tasa del pago (opcional)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="Ej: 45.50" 
+                          value={paymentRate} 
+                          onChange={(e) => setPaymentRate(e.target.value)} 
+                        />
+                        <p className="text-xs text-muted-foreground">Tasa Bs/USD al momento del pago</p>
                       </div>
                     )}
                   </div>

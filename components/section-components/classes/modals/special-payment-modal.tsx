@@ -25,14 +25,16 @@ interface FormData {
   amount: string
   method: string
   reference: string
+  payment_rate: string
 }
 
 const METHODS_WITH_REFERENCE = ["Pago Movil", "Transferencia", "Transferencia BS", "USDT"]
+const METHODS_IN_BS = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
 
 export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalProps) {
   const queryClient = useQueryClient()
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    defaultValues: { member_id: "", class_id: "", amount: "", method: "Efectivo", reference: "" }
+    defaultValues: { member_id: "", class_id: "", amount: "", method: "Efectivo", reference: "", payment_rate: "" }
   })
 
   const member_id = watch("member_id")
@@ -53,7 +55,7 @@ export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalP
 
   useEffect(() => {
     if (open) {
-      reset({ member_id: "", class_id: "", amount: "", method: "Efectivo", reference: "" })
+      reset({ member_id: "", class_id: "", amount: "", method: "Efectivo", reference: "", payment_rate: "" })
     }
   }, [open, reset])
 
@@ -88,7 +90,8 @@ export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalP
       method: data.method,
       reference: METHODS_WITH_REFERENCE.includes(data.method) ? data.reference : null,
       status: "paid",
-      payment_date: new Date().toISOString().split("T")[0]
+      payment_date: new Date().toISOString().split("T")[0],
+      payment_rate: METHODS_IN_BS.includes(data.method) && data.payment_rate ? parseFloat(data.payment_rate) : null
     }
     createMutation.mutate(paymentData)
   }
@@ -155,6 +158,20 @@ export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalP
                   {...register("reference")} 
                   placeholder="Número de referencia o hash" 
                 />
+              </div>
+            )}
+
+            {METHODS_IN_BS.includes(method) && (
+              <div className="grid gap-2">
+                <Label htmlFor="payment_rate">Tasa del pago (opcional)</Label>
+                <Input 
+                  id="payment_rate" 
+                  type="number"
+                  step="0.01"
+                  {...register("payment_rate")} 
+                  placeholder="Ej: 45.50" 
+                />
+                <p className="text-xs text-muted-foreground">Tasa Bs/USD al momento del pago</p>
               </div>
             )}
           </div>

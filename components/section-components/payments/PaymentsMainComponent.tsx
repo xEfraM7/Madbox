@@ -27,7 +27,7 @@ export default function PaymentsMainComponent() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [paymentToDelete, setPaymentToDelete] = useState<any>(null)
-  const [selectedRate, setSelectedRate] = useState<"bcv" | "usdt" | "cash">("bcv")
+  const [selectedRate, setSelectedRate] = useState<"bcv" | "usdt" | "cash" | "custom">("bcv")
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [detailPayment, setDetailPayment] = useState<any>(null)
 
@@ -53,12 +53,14 @@ export default function PaymentsMainComponent() {
 
   const bcvRate = exchangeRates.find((r: any) => r.type === "BCV")?.rate || 1
   const usdtRate = exchangeRates.find((r: any) => r.type === "USDT")?.rate || 1
+  const customRate = exchangeRates.find((r: any) => r.type === "CUSTOM")?.rate || 1
 
   const getRateValue = () => {
     switch (selectedRate) {
       case "bcv": return bcvRate
       case "usdt": return usdtRate
-      case "cash": return usdtRate // Efectivo usa la misma tasa que USDT
+      case "cash": return usdtRate
+      case "custom": return customRate
       default: return bcvRate
     }
   }
@@ -68,6 +70,7 @@ export default function PaymentsMainComponent() {
       case "bcv": return "BCV"
       case "usdt": return "USDT"
       case "cash": return "Efectivo"
+      case "custom": return "Custom"
       default: return "BCV"
     }
   }
@@ -153,6 +156,7 @@ export default function PaymentsMainComponent() {
                   <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedRate("custom")}>Tasa Personalizada</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </CardHeader>
@@ -274,6 +278,7 @@ export default function PaymentsMainComponent() {
                       <TableHead>Cliente</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead className="hidden sm:table-cell">Método</TableHead>
+                      <TableHead className="hidden lg:table-cell">Tasa</TableHead>
                       <TableHead className="hidden md:table-cell">Fecha</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
@@ -281,7 +286,7 @@ export default function PaymentsMainComponent() {
                   <TableBody>
                     {filteredPayments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No se encontraron pagos</TableCell>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No se encontraron pagos</TableCell>
                       </TableRow>
                     ) : (
                       filteredPayments.map((payment: any) => (
@@ -294,6 +299,7 @@ export default function PaymentsMainComponent() {
                           </TableCell>
                           <TableCell className="font-medium">{formatAmount(Number(payment.amount), payment.method)}</TableCell>
                           <TableCell className="hidden sm:table-cell text-muted-foreground">{payment.method || "-"}</TableCell>
+                          <TableCell className="hidden lg:table-cell text-muted-foreground">{payment.payment_rate ? `${Number(payment.payment_rate).toFixed(2)}` : "-"}</TableCell>
                           <TableCell className="hidden md:table-cell text-muted-foreground">{formatDate(payment.payment_date)}</TableCell>
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>

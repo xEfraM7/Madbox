@@ -13,7 +13,7 @@ import { updateExchangeRate } from "@/lib/actions/funds"
 interface ExchangeRateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  type: "BCV" | "USDT" | null
+  type: "BCV" | "USDT" | "CUSTOM" | null
   currentRate: number
 }
 
@@ -56,12 +56,14 @@ export function ExchangeRateModal({ open, onOpenChange, type, currentRate }: Exc
   const getTitle = () => {
     if (type === "BCV") return "Actualizar Tasa BCV"
     if (type === "USDT") return "Actualizar Tasa USDT"
+    if (type === "CUSTOM") return "Actualizar Tasa Personalizada"
     return "Actualizar Tasa"
   }
 
   const getDescription = () => {
     if (type === "BCV") return "Ingresa la tasa del Banco Central de Venezuela (Bs por $)"
     if (type === "USDT") return "Ingresa la tasa de USDT (Bs por USDT)"
+    if (type === "CUSTOM") return "Ingresa tu tasa personalizada (Bs por $)"
     return ""
   }
 

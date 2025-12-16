@@ -30,9 +30,11 @@ interface FormData {
   reference: string
   payment_date: string
   due_date: string
+  payment_rate: string
 }
 
 const METHODS_WITH_REFERENCE = ["Pago Movil", "Transferencia", "Transferencia BS", "USDT"]
+const METHODS_IN_BS = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
 
 function calculateDueDate(paymentDate: string): string {
   const date = new Date(paymentDate + "T00:00:00")
@@ -50,7 +52,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   const initialized = useRef(false)
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    defaultValues: { member_id: "", plan_id: "", amount: "", method: "Efectivo", reference: "", payment_date: "", due_date: "" }
+    defaultValues: { member_id: "", plan_id: "", amount: "", method: "Efectivo", reference: "", payment_date: "", due_date: "", payment_rate: "" }
   })
 
   const member_id = watch("member_id")
@@ -85,7 +87,8 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           method: payment.method || "Efectivo",
           reference: payment.reference || "",
           payment_date: payment.payment_date || "",
-          due_date: payment.due_date || ""
+          due_date: payment.due_date || "",
+          payment_rate: payment.payment_rate?.toString() || ""
         })
       } else if (payment?.member_id) {
         const memberPlan = plans.find((p: any) => p.id === payment.plan_id)
@@ -96,7 +99,8 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           method: "Efectivo", 
           reference: "",
           payment_date: today,
-          due_date: calculateDueDate(today)
+          due_date: calculateDueDate(today),
+          payment_rate: ""
         })
       } else {
         reset({ 
@@ -106,7 +110,8 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           method: "Efectivo", 
           reference: "",
           payment_date: today,
-          due_date: calculateDueDate(today)
+          due_date: calculateDueDate(today),
+          payment_rate: ""
         })
       }
       initialized.current = true
@@ -177,7 +182,8 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       reference: METHODS_WITH_REFERENCE.includes(data.method) ? data.reference : null,
       status: "paid",
       payment_date: data.payment_date || null,
-      due_date: data.due_date
+      due_date: data.due_date,
+      payment_rate: METHODS_IN_BS.includes(data.method) && data.payment_rate ? parseFloat(data.payment_rate) : null
     }
 
     if (isEditing) {
@@ -255,6 +261,20 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
                   {...register("reference")} 
                   placeholder="Número de referencia o hash" 
                 />
+              </div>
+            )}
+
+            {METHODS_IN_BS.includes(method) && (
+              <div className="grid gap-2">
+                <Label htmlFor="payment_rate">Tasa del pago (opcional)</Label>
+                <Input 
+                  id="payment_rate" 
+                  type="number"
+                  step="0.01"
+                  {...register("payment_rate")} 
+                  placeholder="Ej: 45.50" 
+                />
+                <p className="text-xs text-muted-foreground">Tasa Bs/USD al momento del pago</p>
               </div>
             )}
 

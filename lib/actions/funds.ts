@@ -66,6 +66,7 @@ export async function getFundsWithConversion() {
 
   const bcvRate = rates.find(r => r.type === "BCV")?.rate || 1
   const usdtRate = rates.find(r => r.type === "USDT")?.rate || 1
+  const customRate = rates.find(r => r.type === "CUSTOM")?.rate || 1
 
   // Calcular totales de todos los pagos (membresías + clases especiales)
   let bsTotal = 0
@@ -94,7 +95,7 @@ export async function getFundsWithConversion() {
       usdCash: { balance: usdCashTotal, rate: usdtRate },
       usdt: { balance: usdtTotal, rate: usdtRate },
     },
-    rates: { bcv: bcvRate, usdt: usdtRate, cash: usdtRate },
+    rates: { bcv: bcvRate, usdt: usdtRate, cash: usdtRate, custom: customRate },
     totalInUsd,
   }
 }

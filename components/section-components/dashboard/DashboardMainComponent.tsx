@@ -15,7 +15,7 @@ import { getFundsWithConversion } from "@/lib/actions/funds"
 import { ActivityLogModal } from "@/components/shared/activity-log-modal"
 
 export default function DashboardMainComponent() {
-  const [selectedRate, setSelectedRate] = useState<"bcv" | "usdt" | "cash">("bcv")
+  const [selectedRate, setSelectedRate] = useState<"bcv" | "usdt" | "cash" | "custom">("bcv")
   const [activityModalOpen, setActivityModalOpen] = useState(false)
 
   const { data: admin } = useQuery({
@@ -62,10 +62,12 @@ export default function DashboardMainComponent() {
   const getRateValue = () => {
     const bcvRate = fundsData?.rates.bcv || 1
     const usdtRate = fundsData?.rates.usdt || 1
+    const customRate = fundsData?.rates.custom || 1
     switch (selectedRate) {
       case "bcv": return bcvRate
       case "usdt": return usdtRate
-      case "cash": return usdtRate // Efectivo usa la misma tasa que USDT
+      case "cash": return usdtRate
+      case "custom": return customRate
       default: return bcvRate
     }
   }
@@ -137,13 +139,14 @@ export default function DashboardMainComponent() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-6 text-xs px-2">
-                    {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : "Efectivo"}
+                    {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : selectedRate === "custom" ? "Custom" : "Efectivo"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedRate("custom")}>Tasa Personalizada</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </CardHeader>
@@ -282,13 +285,14 @@ export default function DashboardMainComponent() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-7 text-xs">
-                    Tasa {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : "Efectivo"}
+                    Tasa {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : selectedRate === "custom" ? "Custom" : "Efectivo"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedRate("custom")}>Tasa Personalizada</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Wallet className="h-5 w-5 text-primary" />
