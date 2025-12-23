@@ -36,15 +36,31 @@ interface FormData {
 const METHODS_WITH_REFERENCE = ["Pago Movil", "Transferencia", "Transferencia BS", "USDT"]
 const METHODS_IN_BS = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
 
-function calculateDueDate(paymentDate: string): string {
-  const date = new Date(paymentDate + "T00:00:00")
-  const originalDay = date.getDate()
-  date.setMonth(date.getMonth() + 1)
-  // Ajustar si el día no existe en el mes siguiente (ej: 31 -> 28 feb)
-  if (date.getDate() !== originalDay) {
-    date.setDate(0)
+/**
+ * Calcula la fecha de vencimiento basada en el día de corte del miembro
+ * Si el miembro tiene un payment_date anterior, usa ese día como referencia
+ * Si no, usa el día del pago actual
+ */
+function calculateDueDate(paymentDate: string, memberPaymentDate?: string): string {
+  const paymentDateObj = new Date(paymentDate + "T00:00:00")
+  
+  // Determinar el día de corte: usar el del miembro si existe, sino usar el del pago
+  let cutoffDay = paymentDateObj.getDate()
+  
+  if (memberPaymentDate) {
+    const memberDate = new Date(memberPaymentDate + "T00:00:00")
+    cutoffDay = memberDate.getDate()
   }
-  return date.toISOString().split("T")[0]
+  
+  // Crear la fecha de vencimiento en el próximo mes con el mismo día de corte
+  const dueDate = new Date(paymentDateObj.getFullYear(), paymentDateObj.getMonth() + 1, cutoffDay)
+  
+  // Ajustar si el día no existe en el mes siguiente (ej: 31 -> 28 feb)
+  if (dueDate.getDate() !== cutoffDay) {
+    dueDate.setDate(0) // Último día del mes anterior
+  }
+  
+  return dueDate.toISOString().split("T")[0]
 }
 
 export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormModalProps) {
@@ -91,6 +107,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           payment_rate: payment.payment_rate?.toString() || ""
         })
       } else if (payment?.member_id) {
+        const selectedMember = members.find((m: any) => m.id === payment.member_id)
         const memberPlan = plans.find((p: any) => p.id === payment.plan_id)
         reset({ 
           member_id: payment.member_id, 
@@ -99,7 +116,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           method: "Efectivo", 
           reference: "",
           payment_date: today,
-          due_date: calculateDueDate(today),
+          due_date: calculateDueDate(today, selectedMember?.payment_date),
           payment_rate: ""
         })
       } else {
@@ -286,7 +303,8 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
                   onChange={(value) => {
                     setValue("payment_date", value)
                     if (value && !isEditing) {
-                      setValue("due_date", calculateDueDate(value))
+                      const selectedMember = members.find((m: any) => m.id === member_id)
+                      setValue("due_date", calculateDueDate(value, selectedMember?.payment_date))
                     }
                   }}
                 />

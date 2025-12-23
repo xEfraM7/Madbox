@@ -27,7 +27,9 @@ export async function createPayment(payment: TablesInsert<"payments">) {
 
   if (error) throw error
 
-  // Actualizar la fecha de pago del cliente (due_date será su nueva fecha de pago)
+  // Actualizar la fecha de pago del cliente
+  // La due_date del pago se convierte en el nuevo payment_date del miembro
+  // Esto respeta el día de corte original del miembro
   if (payment.member_id && payment.due_date) {
     await supabase
       .from("members")
