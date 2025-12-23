@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Users, DollarSign, CreditCard, TrendingUp, Calendar, Activity, ArrowUpRight, ArrowDownRight, Wallet, Banknote, Bitcoin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getDashboardStats, getRecentActivity, getUpcomingPayments, getMonthlyRevenueChart } from "@/lib/actions/dashboard"
 import { getAdmin } from "@/lib/actions/auth"
 import { getFundsWithConversion } from "@/lib/actions/funds"
@@ -17,6 +17,11 @@ import { ActivityLogModal } from "@/components/shared/activity-log-modal"
 export default function DashboardMainComponent() {
   const [selectedRate, setSelectedRate] = useState<"bcv" | "usdt" | "cash" | "custom">("bcv")
   const [activityModalOpen, setActivityModalOpen] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const { data: admin } = useQuery({
     queryKey: ["current-admin"],
@@ -52,11 +57,17 @@ export default function DashboardMainComponent() {
   })
 
   const formatCurrency = (amount: number) => {
+    if (!isClient) return "$0"
     return new Intl.NumberFormat("es-ES", {
       style: "currency",
       currency: "USD",
       minimumFractionDigits: 0,
     }).format(amount)
+  }
+
+  const formatNumber = (amount: number, decimals = 2) => {
+    if (!isClient) return "0"
+    return amount.toLocaleString("es-ES", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
   }
 
   const getRateValue = () => {
@@ -224,7 +235,7 @@ export default function DashboardMainComponent() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    Bs. {(fundsData?.funds.bs.balance || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })}
+                    Bs. {formatNumber(fundsData?.funds.bs.balance || 0, 2)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     ≈ ${(fundsData?.funds.bs.inUsd || 0).toFixed(2)} USD (Tasa BCV: {fundsData?.rates.bcv})
@@ -245,7 +256,7 @@ export default function DashboardMainComponent() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    ${(fundsData?.funds.usdCash.balance || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })}
+                    ${formatNumber(fundsData?.funds.usdCash.balance || 0, 2)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Tasa efectivo: Bs. {fundsData?.rates.cash}
@@ -266,7 +277,7 @@ export default function DashboardMainComponent() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    ${(fundsData?.funds.usdt.balance || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })} USDT
+                    ${formatNumber(fundsData?.funds.usdt.balance || 0, 2)} USDT
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Tasa USDT: Bs. {fundsData?.rates.usdt}
@@ -304,7 +315,7 @@ export default function DashboardMainComponent() {
             ) : (
               <>
                 <div className="text-4xl font-bold text-primary">
-                  ${calculateTotalInUsd().toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${formatNumber(calculateTotalInUsd(), 2)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Bs convertidos a tasa {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : "Efectivo"}: {getRateValue().toFixed(2)}

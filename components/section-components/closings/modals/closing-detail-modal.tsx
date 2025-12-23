@@ -1,7 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -9,11 +10,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Download, DollarSign, Users, Banknote, TrendingUp, Calendar } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { 
+  Download, 
+  Loader2, 
+  Users, 
+  DollarSign, 
+  TrendingUp,
+  Banknote,
+  Bitcoin,
+  Calendar
+} from "lucide-react"
 import { exportMonthlyClosing } from "@/lib/actions/closings"
+import { toast } from "sonner"
 import type { MonthlyClosing } from "@/types/database"
 
 interface ClosingDetailModalProps {
@@ -23,15 +34,41 @@ interface ClosingDetailModalProps {
 }
 
 export function ClosingDetailModal({ open, onOpenChange, closing }: ClosingDetailModalProps) {
+  const [activeTab, setActiveTab] = useState("overview")
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      if (!closing) throw new Error("No closing data")
+      const content = await exportMonthlyClosing(closing.id)
+      
+      // Create and download file
+      const element = document.createElement("a")
+      element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(content))
+      element.setAttribute("download", `cierre-${closing.period}.txt`)
+      element.style.display = "none"
+      document.body.appendChild(element)
+      element.click()
+      document.body.removeChild(element)
+    },
+    onSuccess: () => {
+      toast.success("Cierre exportado exitosamente")
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Error al exportar")
+    },
+  })
+
+  if (!closing) return null
+
+  const formatCurrency = (amount: number, currency: string = "$") => {
+    return `${currency} ${amount.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+
   const formatPeriod = (period: string) => {
     const [year, month] = period.split("-")
     const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
                     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     return `${months[parseInt(month) - 1]} ${year}`
-  }
-
-  const formatCurrency = (amount: number, currency: string = "$") => {
-    return `${currency} ${amount.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const formatDate = (date: string) => {
@@ -44,203 +81,263 @@ export function ClosingDetailModal({ open, onOpenChange, closing }: ClosingDetai
     })
   }
 
-  const exportMutation = useMutation({
-    mutationFn: () => exportMonthlyClosing(closing!.id),
-    onSuccess: (data) => {
-      // Create and download file
-      const blob = new Blob([data], { type: "text/plain;charset=utf-8" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `cierre-${closing!.period}.txt`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      toast.success("Exportación completada")
-    },
-    onError: () => {
-      toast.error("Error al exportar el cierre")
-    },
-  })
-
-  if (!closing) return null
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                {formatPeriod(closing.period)}
-              </DialogTitle>
-              <DialogDescription>
-                Cerrado el {formatDate(closing.closed_at)} por {closing.admin?.name || "Sistema"}
-              </DialogDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending}>
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
-          </div>
+          <DialogTitle className="text-2xl">{formatPeriod(closing.period)}</DialogTitle>
+          <DialogDescription>
+            Cerrado el {formatDate(closing.closed_at)} por {closing.admin?.name || "Sistema"}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Total Revenue */}
-          <div className="flex justify-between items-center p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-500" />
-              <span className="font-medium">Ingresos Totales (USD)</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Resumen</TabsTrigger>
+            <TabsTrigger value="revenue" className="text-xs sm:text-sm">Ingresos</TabsTrigger>
+            <TabsTrigger value="members" className="text-xs sm:text-sm">Miembros</TabsTrigger>
+            <TabsTrigger value="funds" className="hidden sm:block">Fondos</TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Total en USD
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-green-500">
+                    {formatCurrency(closing.total_revenue_usd)}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Miembros Activos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{closing.active_members}</p>
+                </CardContent>
+              </Card>
             </div>
-            <span className="text-2xl font-bold text-green-500">{formatCurrency(closing.total_revenue_usd)}</span>
-          </div>
 
-          <Separator />
+            {closing.notes && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Notas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm whitespace-pre-wrap">{closing.notes}</p>
+                </CardContent>
+              </Card>
+            )}
 
-          {/* Revenue Breakdown */}
-          <div className="space-y-3">
-            <h4 className="font-medium">Desglose de Ingresos por Método</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 p-4 rounded-lg bg-muted/50">
-                <p className="font-medium text-sm">Membresías ({closing.membership_payments_count} pagos)</p>
-                <div className="space-y-1 text-sm">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Estado de Fondos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Badge variant={closing.funds_reset ? "default" : "secondary"}>
+                  {closing.funds_reset ? "Fondos Reseteados" : "Fondos No Reseteados"}
+                </Badge>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Revenue Tab */}
+          <TabsContent value="revenue" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Ingresos por Membresías</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Bolívares:</span>
-                    <span>{formatCurrency(closing.membership_revenue_bs, "Bs")}</span>
+                    <span className="font-medium">Bs {closing.membership_revenue_bs.toLocaleString("es-VE")}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">USD Efectivo:</span>
-                    <span>{formatCurrency(closing.membership_revenue_usd_cash)}</span>
+                    <span className="font-medium">${closing.membership_revenue_usd_cash.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">USDT:</span>
-                    <span>{formatCurrency(closing.membership_revenue_usdt, "USDT")}</span>
+                    <span className="font-medium">USDT {closing.membership_revenue_usdt.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between font-medium">
+                    <span>Total Pagos:</span>
+                    <span>{closing.membership_payments_count}</span>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-2 p-4 rounded-lg bg-muted/50">
-                <p className="font-medium text-sm">Clases Especiales ({closing.class_payments_count} pagos)</p>
-                <div className="space-y-1 text-sm">
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Ingresos por Clases Especiales</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Bolívares:</span>
-                    <span>{formatCurrency(closing.class_revenue_bs, "Bs")}</span>
+                    <span className="font-medium">Bs {closing.class_revenue_bs.toLocaleString("es-VE")}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">USD Efectivo:</span>
-                    <span>{formatCurrency(closing.class_revenue_usd_cash)}</span>
+                    <span className="font-medium">${closing.class_revenue_usd_cash.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">USDT:</span>
-                    <span>{formatCurrency(closing.class_revenue_usdt, "USDT")}</span>
+                    <span className="font-medium">USDT {closing.class_revenue_usdt.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between font-medium">
+                    <span>Total Pagos:</span>
+                    <span>{closing.class_payments_count}</span>
                   </div>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Members Tab */}
+          <TabsContent value="members" className="space-y-4">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs sm:text-sm">Activos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{closing.active_members}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs sm:text-sm">Nuevos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-blue-500">{closing.new_members}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs sm:text-sm">Vencidos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-red-500">{closing.expired_members}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs sm:text-sm">Congelados</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-orange-500">{closing.frozen_members}</p>
+                </CardContent>
+              </Card>
             </div>
-          </div>
 
-          <Separator />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Métricas</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Miembros:</span>
+                    <span className="font-medium">{closing.total_members}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tasa de Retención:</span>
+                    <span className="font-medium">{closing.retention_rate.toFixed(2)}%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {/* Member Metrics */}
-          <div className="space-y-3">
-            <h4 className="font-medium flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-500" />
-              Métricas de Miembros
-            </h4>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-lg bg-muted/50 text-center">
-                <p className="text-2xl font-bold">{closing.active_members}</p>
-                <p className="text-xs text-muted-foreground">Activos</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-center">
-                <p className="text-2xl font-bold text-blue-500">{closing.new_members}</p>
-                <p className="text-xs text-muted-foreground">Nuevos</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-center">
-                <p className="text-2xl font-bold text-red-500">{closing.expired_members}</p>
-                <p className="text-xs text-muted-foreground">Vencidos</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-center">
-                <p className="text-2xl font-bold text-orange-500">{closing.frozen_members}</p>
-                <p className="text-xs text-muted-foreground">Congelados</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-center">
-                <p className="text-2xl font-bold">{closing.total_members}</p>
-                <p className="text-xs text-muted-foreground">Total</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-center">
-                <p className="text-2xl font-bold flex items-center justify-center gap-1">
-                  <TrendingUp className="h-4 w-4" />
-                  {closing.retention_rate.toFixed(1)}%
-                </p>
-                <p className="text-xs text-muted-foreground">Retención</p>
-              </div>
-            </div>
-          </div>
+          {/* Funds Tab */}
+          <TabsContent value="funds" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Fondos al Cierre</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Bolívares:</span>
+                    <span className="font-medium">Bs {closing.funds_bs.toLocaleString("es-VE")}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">USD Efectivo:</span>
+                    <span className="font-medium">${closing.funds_usd_cash.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">USDT:</span>
+                    <span className="font-medium">USDT {closing.funds_usdt.toFixed(2)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Separator />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Tasas de Cambio</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">BCV:</span>
+                    <span className="font-medium">{closing.rate_bcv.toFixed(2)} Bs/$</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">USDT:</span>
+                    <span className="font-medium">{closing.rate_usdt.toFixed(2)} Bs/USDT</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Personalizada:</span>
+                    <span className="font-medium">{closing.rate_custom.toFixed(2)} Bs/$</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
-          {/* Fund Balances */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium flex items-center gap-2">
-                <Banknote className="h-4 w-4 text-purple-500" />
-                Fondos al Cierre
-              </h4>
-              <Badge variant={closing.funds_reset ? "default" : "secondary"}>
-                {closing.funds_reset ? "Fondos reseteados" : "Fondos preservados"}
-              </Badge>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
-                <p className="text-lg font-bold">{formatCurrency(closing.funds_bs, "Bs")}</p>
-                <p className="text-xs text-muted-foreground">Bolívares</p>
-              </div>
-              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
-                <p className="text-lg font-bold">{formatCurrency(closing.funds_usd_cash)}</p>
-                <p className="text-xs text-muted-foreground">USD Efectivo</p>
-              </div>
-              <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-center">
-                <p className="text-lg font-bold">{formatCurrency(closing.funds_usdt, "USDT")}</p>
-                <p className="text-xs text-muted-foreground">USDT</p>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Exchange Rates */}
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm">Tasas de Cambio Registradas</h4>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-2 rounded bg-muted/50 text-center">
-                <p className="text-sm font-medium">{closing.rate_bcv.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">BCV</p>
-              </div>
-              <div className="p-2 rounded bg-muted/50 text-center">
-                <p className="text-sm font-medium">{closing.rate_usdt.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">USDT</p>
-              </div>
-              <div className="p-2 rounded bg-muted/50 text-center">
-                <p className="text-sm font-medium">{closing.rate_custom.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">Custom</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          {closing.notes && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Notas</h4>
-                <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
-                  {closing.notes}
-                </p>
-              </div>
-            </>
-          )}
+        <div className="flex gap-2 justify-end">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Cerrar
+          </Button>
+          <Button
+            onClick={() => exportMutation.mutate()}
+            disabled={exportMutation.isPending}
+            className="gap-2"
+          >
+            {exportMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Exportando...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Exportar
+              </>
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
