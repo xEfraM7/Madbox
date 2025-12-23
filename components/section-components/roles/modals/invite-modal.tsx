@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -15,21 +16,32 @@ interface InviteModalProps {
   onOpenChange: (open: boolean) => void
 }
 
+interface FormData {
+  name: string
+  email: string
+}
+
 export function InviteModal({ open, onOpenChange }: InviteModalProps) {
   const queryClient = useQueryClient()
-  const [email, setEmail] = useState("")
-  const [name, setName] = useState("")
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+    defaultValues: { name: "", email: "" }
+  })
+
+  useEffect(() => {
+    if (open) {
+      reset({ name: "", email: "" })
+    }
+  }, [open, reset])
 
   const inviteMutation = useMutation({
     mutationFn: ({ email, name }: { email: string; name?: string }) => sendInvitation(email, name),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["all-auth-users"] })
       queryClient.invalidateQueries({ queryKey: ["admins"] })
       toast.success("Invitación enviada", {
-        description: `Se ha enviado una invitación a ${email}. Se le asignó el rol "Basica".`,
+        description: `Se ha enviado una invitación a ${variables.email}. Se le asignó el rol "Basica".`,
       })
-      setEmail("")
-      setName("")
       onOpenChange(false)
     },
     onError: (error: Error) => {
@@ -39,13 +51,8 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email.trim()) {
-      toast.error("El correo es requerido")
-      return
-    }
-    inviteMutation.mutate({ email: email.trim(), name: name.trim() || undefined })
+  const onSubmit = (data: FormData) => {
+    inviteMutation.mutate({ email: data.email.trim(), name: data.name.trim() || undefined })
   }
 
   return (
@@ -60,7 +67,7 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
             Envía una invitación para que un nuevo usuario acceda a la aplicación. Se le asignará automáticamente el rol "Basica".
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nombre</Label>
@@ -68,8 +75,7 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
                 id="name"
                 type="text"
                 placeholder="Juan Pérez"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                {...register("name")}
                 disabled={inviteMutation.isPending}
               />
             </div>
@@ -79,10 +85,13 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
                 id="email"
                 type="email"
                 placeholder="usuario@ejemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email", {
+                  required: "El correo es requerido",
+                  pattern: { value: /\S+@\S+\.\S+/, message: "Ingresa un correo válido" }
+                })}
                 disabled={inviteMutation.isPending}
               />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
           </div>
           <DialogFooter>

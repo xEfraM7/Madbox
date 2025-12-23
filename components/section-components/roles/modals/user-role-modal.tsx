@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -17,15 +18,25 @@ interface UserRoleModalProps {
   roles: any[]
 }
 
+interface FormData {
+  role_id: string
+}
+
 export function UserRoleModal({ open, onOpenChange, user, roles }: UserRoleModalProps) {
   const queryClient = useQueryClient()
-  const [selectedRoleId, setSelectedRoleId] = useState("")
+
+  const { handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
+    defaultValues: { role_id: "" }
+  })
+
+  const roleId = watch("role_id")
+  const selectedRole = roles.find(r => r.id === roleId)
 
   useEffect(() => {
-    if (user?.role_id) {
-      setSelectedRoleId(user.role_id)
+    if (open && user?.role_id) {
+      reset({ role_id: user.role_id })
     }
-  }, [user])
+  }, [open, user, reset])
 
   const updateMutation = useMutation({
     mutationFn: ({ id, roleId }: { id: string; roleId: string }) => 
@@ -45,20 +56,13 @@ export function UserRoleModal({ open, onOpenChange, user, roles }: UserRoleModal
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedRoleId) {
-      toast.error("Selecciona un rol")
-      return
-    }
+  const onSubmit = (data: FormData) => {
     if (!user?.id) {
       toast.error("Usuario no encontrado")
       return
     }
-    updateMutation.mutate({ id: user.id, roleId: selectedRoleId })
+    updateMutation.mutate({ id: user.id, roleId: data.role_id })
   }
-
-  const selectedRole = roles.find(r => r.id === selectedRoleId)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,11 +76,11 @@ export function UserRoleModal({ open, onOpenChange, user, roles }: UserRoleModal
             Cambia el rol y permisos de <span className="font-medium">{user?.email}</span>
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="role">Rol</Label>
-              <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+              <Select value={roleId} onValueChange={(value) => setValue("role_id", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un rol" />
                 </SelectTrigger>
@@ -88,6 +92,7 @@ export function UserRoleModal({ open, onOpenChange, user, roles }: UserRoleModal
                   ))}
                 </SelectContent>
               </Select>
+              {errors.role_id && <p className="text-sm text-destructive">{errors.role_id.message}</p>}
             </div>
             {selectedRole && (
               <div className="rounded-md bg-muted p-3">
@@ -102,7 +107,7 @@ export function UserRoleModal({ open, onOpenChange, user, roles }: UserRoleModal
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateMutation.isPending}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={updateMutation.isPending}>
+            <Button type="submit" disabled={updateMutation.isPending || !roleId}>
               {updateMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,39 +11,31 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { updatePassword } from "@/lib/actions/auth"
 
+interface FormData {
+  password: string
+  confirmPassword: string
+}
+
 export default function ResetPasswordMainComponent() {
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [generalError, setGeneralError] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
+    defaultValues: { password: "", confirmPassword: "" }
+  })
 
-    if (!password) {
-      setError("La contraseña es requerida")
-      return
-    }
+  const password = watch("password")
 
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres")
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden")
-      return
-    }
-
+  const onSubmit = async (data: FormData) => {
+    setGeneralError("")
     setIsLoading(true)
-    const result = await updatePassword(password)
+    const result = await updatePassword(data.password)
     setIsLoading(false)
 
     if (result.error) {
-      setError("No se pudo actualizar la contraseña. El enlace puede haber expirado.")
+      setGeneralError("No se pudo actualizar la contraseña. El enlace puede haber expirado.")
     } else {
       setSuccess(true)
     }
@@ -90,7 +83,7 @@ export default function ResetPasswordMainComponent() {
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium">Nueva contraseña</Label>
               <div className="relative">
@@ -98,9 +91,11 @@ export default function ResetPasswordMainComponent() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError("") }}
-                  className={error ? "border-destructive pr-10" : "pr-10"}
+                  {...register("password", {
+                    required: "La contraseña es requerida",
+                    minLength: { value: 6, message: "La contraseña debe tener al menos 6 caracteres" }
+                  })}
+                  className={errors.password ? "border-destructive pr-10" : "pr-10"}
                 />
                 <Button
                   type="button"
@@ -112,6 +107,12 @@ export default function ResetPasswordMainComponent() {
                   {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                 </Button>
               </div>
+              {errors.password && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">{errors.password.message}</AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -120,16 +121,24 @@ export default function ResetPasswordMainComponent() {
                 id="confirmPassword"
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => { setConfirmPassword(e.target.value); setError("") }}
-                className={error ? "border-destructive" : ""}
+                {...register("confirmPassword", {
+                  required: "Confirma tu contraseña",
+                  validate: (value) => value === password || "Las contraseñas no coinciden"
+                })}
+                className={errors.confirmPassword ? "border-destructive" : ""}
               />
+              {errors.confirmPassword && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">{errors.confirmPassword.message}</AlertDescription>
+                </Alert>
+              )}
             </div>
 
-            {error && (
+            {generalError && (
               <Alert variant="destructive" className="py-2">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-sm">{error}</AlertDescription>
+                <AlertDescription className="text-sm">{generalError}</AlertDescription>
               </Alert>
             )}
 

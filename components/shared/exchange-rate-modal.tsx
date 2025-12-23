@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -17,23 +18,30 @@ interface ExchangeRateModalProps {
   currentRate: number
 }
 
+interface FormData {
+  rate: string
+}
+
 export function ExchangeRateModal({ open, onOpenChange, type, currentRate }: ExchangeRateModalProps) {
   const queryClient = useQueryClient()
-  const [rate, setRate] = useState("")
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+    defaultValues: { rate: "" }
+  })
 
   useEffect(() => {
     if (open && currentRate) {
-      setRate(currentRate.toString())
+      reset({ rate: currentRate.toString() })
     }
-  }, [open, currentRate])
+  }, [open, currentRate, reset])
 
   const updateMutation = useMutation({
     mutationFn: ({ type, rate }: { type: string; rate: number }) => updateExchangeRate(type, rate),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["exchange-rates"] })
       queryClient.invalidateQueries({ queryKey: ["funds"] })
       toast.success("Tasa actualizada", {
-        description: `La tasa ${type} ha sido actualizada a Bs. ${rate}`,
+        description: `La tasa ${type} ha sido actualizada a Bs. ${variables.rate}`,
       })
       onOpenChange(false)
     },
@@ -42,13 +50,8 @@ export function ExchangeRateModal({ open, onOpenChange, type, currentRate }: Exc
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const rateValue = parseFloat(rate)
-    if (isNaN(rateValue) || rateValue <= 0) {
-      toast.error("Error", { description: "Ingresa una tasa válida mayor a 0" })
-      return
-    }
+  const onSubmit = (data: FormData) => {
+    const rateValue = parseFloat(data.rate)
     if (!type) return
     updateMutation.mutate({ type, rate: rateValue })
   }
@@ -74,7 +77,7 @@ export function ExchangeRateModal({ open, onOpenChange, type, currentRate }: Exc
           <DialogTitle>{getTitle()}</DialogTitle>
           <DialogDescription>{getDescription()}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="rate">Tasa en Bolívares</Label>
@@ -86,12 +89,15 @@ export function ExchangeRateModal({ open, onOpenChange, type, currentRate }: Exc
                   step="0.01"
                   min="0"
                   placeholder="0.00"
-                  value={rate}
-                  onChange={(e) => setRate(e.target.value)}
+                  {...register("rate", {
+                    required: "La tasa es requerida",
+                    validate: (value) => parseFloat(value) > 0 || "Ingresa una tasa válida mayor a 0"
+                  })}
                   className="pl-10"
                   disabled={updateMutation.isPending}
                 />
               </div>
+              {errors.rate && <p className="text-sm text-destructive">{errors.rate.message}</p>}
             </div>
           </div>
           <DialogFooter>

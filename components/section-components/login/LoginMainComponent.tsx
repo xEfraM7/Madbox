@@ -1,7 +1,7 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,52 +11,28 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { signIn } from "@/lib/actions/auth"
 import Link from "next/link"
 
-interface FormErrors {
-  email?: string
-  password?: string
-  general?: string
+interface FormData {
+  email: string
+  password: string
 }
 
 export default function LoginMainComponent() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [errors, setErrors] = useState<FormErrors>({})
+  const [generalError, setGeneralError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const validateForm = () => {
-    const newErrors: FormErrors = {}
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+    defaultValues: { email: "", password: "" }
+  })
 
-    if (!email) {
-      newErrors.email = "El correo electrónico es requerido"
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Ingresa un correo electrónico válido"
-    }
-
-    if (!password) {
-      newErrors.password = "La contraseña es requerida"
-    } else if (password.length < 6) {
-      newErrors.password = "La contraseña debe tener al menos 6 caracteres"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validateForm()) return
-
+  const onSubmit = async (data: FormData) => {
+    setGeneralError("")
     setIsLoading(true)
-    const result = await signIn(email, password)
+    const result = await signIn(data.email, data.password)
     
     if (result?.error) {
-      setErrors({ general: "Credenciales inválidas. Verifica tu correo y contraseña." })
+      setGeneralError("Credenciales inválidas. Verifica tu correo y contraseña.")
       setIsLoading(false)
     }
-  }
-
-  const clearError = (field: keyof FormErrors) => {
-    if (errors[field]) setErrors({ ...errors, [field]: undefined })
   }
 
   return (
@@ -72,21 +48,23 @@ export default function LoginMainComponent() {
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="admin@gimnasio.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); clearError("email") }}
+                {...register("email", { 
+                  required: "El correo electrónico es requerido",
+                  pattern: { value: /\S+@\S+\.\S+/, message: "Ingresa un correo electrónico válido" }
+                })}
                 className={errors.email ? "border-destructive" : ""}
               />
               {errors.email && (
                 <Alert variant="destructive" className="py-2">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-sm">{errors.email}</AlertDescription>
+                  <AlertDescription className="text-sm">{errors.email.message}</AlertDescription>
                 </Alert>
               )}
             </div>
@@ -97,14 +75,16 @@ export default function LoginMainComponent() {
                 id="password"
                 type="password"
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); clearError("password") }}
+                {...register("password", { 
+                  required: "La contraseña es requerida",
+                  minLength: { value: 6, message: "La contraseña debe tener al menos 6 caracteres" }
+                })}
                 className={errors.password ? "border-destructive" : ""}
               />
               {errors.password && (
                 <Alert variant="destructive" className="py-2">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-sm">{errors.password}</AlertDescription>
+                  <AlertDescription className="text-sm">{errors.password.message}</AlertDescription>
                 </Alert>
               )}
             </div>
@@ -113,10 +93,10 @@ export default function LoginMainComponent() {
               {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
             </Button>
 
-            {errors.general && (
+            {generalError && (
               <Alert variant="destructive" className="py-2">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-sm">{errors.general}</AlertDescription>
+                <AlertDescription className="text-sm">{generalError}</AlertDescription>
               </Alert>
             )}
 

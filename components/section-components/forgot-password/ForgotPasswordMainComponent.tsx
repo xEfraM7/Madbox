@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,33 +11,30 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { resetPassword } from "@/lib/actions/auth"
 
+interface FormData {
+  email: string
+}
+
 export default function ForgotPasswordMainComponent() {
-  const [email, setEmail] = useState("")
-  const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [sentEmail, setSentEmail] = useState("")
+  const [generalError, setGeneralError] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
+    defaultValues: { email: "" }
+  })
 
-    if (!email) {
-      setError("El correo electrónico es requerido")
-      return
-    }
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Ingresa un correo electrónico válido")
-      return
-    }
-
+  const onSubmit = async (data: FormData) => {
+    setGeneralError("")
     setIsLoading(true)
-    const result = await resetPassword(email)
+    const result = await resetPassword(data.email)
     setIsLoading(false)
 
     if (result.error) {
-      setError("No se pudo enviar el correo. Intenta de nuevo.")
+      setGeneralError("No se pudo enviar el correo. Intenta de nuevo.")
     } else {
+      setSentEmail(data.email)
       setEmailSent(true)
     }
   }
@@ -52,7 +50,7 @@ export default function ForgotPasswordMainComponent() {
             <div>
               <CardTitle className="text-2xl font-bold">Correo enviado</CardTitle>
               <CardDescription className="text-base mt-2">
-                Hemos enviado un enlace de recuperación a <span className="font-medium text-foreground">{email}</span>
+                Hemos enviado un enlace de recuperación a <span className="font-medium text-foreground">{sentEmail}</span>
               </CardDescription>
             </div>
           </CardHeader>
@@ -62,7 +60,7 @@ export default function ForgotPasswordMainComponent() {
               El enlace expira en 24 horas.
             </p>
             <div className="flex flex-col gap-2">
-              <Button variant="outline" className="w-full" onClick={() => setEmailSent(false)}>
+              <Button variant="outline" className="w-full" onClick={() => { setEmailSent(false); reset() }}>
                 <Mail className="mr-2 h-4 w-4" />
                 Enviar a otro correo
               </Button>
@@ -94,21 +92,29 @@ export default function ForgotPasswordMainComponent() {
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="admin@gimnasio.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError("") }}
-                className={error ? "border-destructive" : ""}
+                {...register("email", {
+                  required: "El correo electrónico es requerido",
+                  pattern: { value: /\S+@\S+\.\S+/, message: "Ingresa un correo electrónico válido" }
+                })}
+                className={errors.email ? "border-destructive" : ""}
               />
-              {error && (
+              {errors.email && (
                 <Alert variant="destructive" className="py-2">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-sm">{error}</AlertDescription>
+                  <AlertDescription className="text-sm">{errors.email.message}</AlertDescription>
+                </Alert>
+              )}
+              {generalError && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">{generalError}</AlertDescription>
                 </Alert>
               )}
             </div>
