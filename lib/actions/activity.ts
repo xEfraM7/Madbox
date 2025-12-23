@@ -11,10 +11,12 @@ export type ActivityAction =
   | "class_created" | "class_updated" | "class_deleted"
   | "class_payment_registered" | "class_payment_deleted"
   | "rate_updated" | "role_updated" | "invitation_sent"
+  | "monthly_closing_created" | "funds_reset"
 
 export type EntityType =
   | "payment" | "member" | "plan" | "special_class"
   | "special_class_payment" | "exchange_rate" | "role" | "admin"
+  | "monthly_closing" | "fund"
 
 interface LogActivityParams {
   action: ActivityAction

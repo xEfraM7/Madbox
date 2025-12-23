@@ -373,6 +373,106 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_closings: {
+        Row: {
+          id: string
+          period: string
+          membership_revenue_bs: number | null
+          membership_revenue_usd_cash: number | null
+          membership_revenue_usdt: number | null
+          membership_payments_count: number | null
+          class_revenue_bs: number | null
+          class_revenue_usd_cash: number | null
+          class_revenue_usdt: number | null
+          class_payments_count: number | null
+          total_revenue_usd: number | null
+          active_members: number | null
+          new_members: number | null
+          expired_members: number | null
+          frozen_members: number | null
+          total_members: number | null
+          retention_rate: number | null
+          funds_bs: number | null
+          funds_usd_cash: number | null
+          funds_usdt: number | null
+          funds_reset: boolean | null
+          rate_bcv: number | null
+          rate_usdt: number | null
+          rate_custom: number | null
+          closed_by: string | null
+          closed_at: string | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          period: string
+          membership_revenue_bs?: number | null
+          membership_revenue_usd_cash?: number | null
+          membership_revenue_usdt?: number | null
+          membership_payments_count?: number | null
+          class_revenue_bs?: number | null
+          class_revenue_usd_cash?: number | null
+          class_revenue_usdt?: number | null
+          class_payments_count?: number | null
+          total_revenue_usd?: number | null
+          active_members?: number | null
+          new_members?: number | null
+          expired_members?: number | null
+          frozen_members?: number | null
+          total_members?: number | null
+          retention_rate?: number | null
+          funds_bs?: number | null
+          funds_usd_cash?: number | null
+          funds_usdt?: number | null
+          funds_reset?: boolean | null
+          rate_bcv?: number | null
+          rate_usdt?: number | null
+          rate_custom?: number | null
+          closed_by?: string | null
+          closed_at?: string | null
+          notes?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          period?: string
+          membership_revenue_bs?: number | null
+          membership_revenue_usd_cash?: number | null
+          membership_revenue_usdt?: number | null
+          membership_payments_count?: number | null
+          class_revenue_bs?: number | null
+          class_revenue_usd_cash?: number | null
+          class_revenue_usdt?: number | null
+          class_payments_count?: number | null
+          total_revenue_usd?: number | null
+          active_members?: number | null
+          new_members?: number | null
+          expired_members?: number | null
+          frozen_members?: number | null
+          total_members?: number | null
+          retention_rate?: number | null
+          funds_bs?: number | null
+          funds_usd_cash?: number | null
+          funds_usdt?: number | null
+          funds_reset?: boolean | null
+          rate_bcv?: number | null
+          rate_usdt?: number | null
+          rate_custom?: number | null
+          closed_by?: string | null
+          closed_at?: string | null
+          notes?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_closings_closed_by_fkey"
+            columns: ["closed_by"]
+            referencedRelation: "admins"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -389,3 +489,62 @@ export type Database = {
 export type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"]
 export type TablesInsert<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Insert"]
 export type TablesUpdate<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Update"]
+
+// Monthly Closing types
+export interface MonthlyClosing {
+  id: string
+  period: string
+  
+  // Ingresos membresías
+  membership_revenue_bs: number
+  membership_revenue_usd_cash: number
+  membership_revenue_usdt: number
+  membership_payments_count: number
+  
+  // Ingresos clases
+  class_revenue_bs: number
+  class_revenue_usd_cash: number
+  class_revenue_usdt: number
+  class_payments_count: number
+  
+  // Total USD
+  total_revenue_usd: number
+  
+  // Métricas miembros
+  active_members: number
+  new_members: number
+  expired_members: number
+  frozen_members: number
+  total_members: number
+  retention_rate: number
+  
+  // Fondos
+  funds_bs: number
+  funds_usd_cash: number
+  funds_usdt: number
+  funds_reset: boolean
+  
+  // Tasas
+  rate_bcv: number
+  rate_usdt: number
+  rate_custom: number
+  
+  // Metadata
+  closed_by: string | null
+  closed_at: string
+  notes: string | null
+  created_at: string
+  
+  // Relaciones
+  admin?: { name: string }
+}
+
+export interface MonthlyClosingPreview {
+  period: string
+  membership_revenue: { bs: number; usd_cash: number; usdt: number; count: number }
+  class_revenue: { bs: number; usd_cash: number; usdt: number; count: number }
+  total_revenue_usd: number
+  members: { active: number; new: number; expired: number; frozen: number; total: number; retention: number }
+  funds: { bs: number; usd_cash: number; usdt: number }
+  rates: { bcv: number; usdt: number; custom: number }
+}

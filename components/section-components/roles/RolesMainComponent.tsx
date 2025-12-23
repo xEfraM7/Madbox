@@ -61,6 +61,14 @@ export const permissionGroups = [
     ]
   },
   {
+    id: "closings",
+    label: "Cierres Mensuales",
+    permissions: [
+      { id: "closings.view", label: "Ver cierres", description: "Ver historial de cierres mensuales" },
+      { id: "closings.edit", label: "Realizar cierres", description: "Ejecutar cierre de mes" },
+    ]
+  },
+  {
     id: "roles",
     label: "Roles y Administradores",
     permissions: [

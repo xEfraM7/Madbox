@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { usePermissions } from "@/lib/hooks/use-permissions"
 import { ExchangeRateModal } from "./exchange-rate-modal"
 
-import { Home, Users, Shield, CreditCard, DollarSign, Calendar, Settings, LogOut, Menu, X } from "lucide-react"
+import { Home, Users, Shield, CreditCard, DollarSign, Calendar, CalendarCheck, Settings, LogOut, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut, getUser } from "@/lib/actions/auth"
@@ -24,6 +24,7 @@ const navigation = [
   { name: "Planes", href: "/dashboard/plans", icon: CreditCard, permissions: ["plans.view"] },
   { name: "Pagos", href: "/dashboard/payments", icon: DollarSign, permissions: ["payments.view"] },
   { name: "Clases Especiales", href: "/dashboard/classes", icon: Calendar, permissions: ["classes.view"] },
+  { name: "Cierres", href: "/dashboard/closings", icon: CalendarCheck, permissions: ["closings.view"] },
   { name: "Configuración", href: "/dashboard/settings", icon: Settings, permissions: ["settings.view"] },
 ]
 
