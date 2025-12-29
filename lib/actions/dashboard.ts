@@ -2,13 +2,17 @@
 
 import { createClient } from "@/utils/supabase/server"
 
-export async function getDashboardStats() {
+export async function getDashboardStats(monthOffset: number = 0) {
   const supabase = await createClient()
 
   const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
-  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString()
+  const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1)
+  const startOfMonth = targetMonth.toISOString().split("T")[0]
+  const endOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).toISOString().split("T")[0]
+  
+  const lastMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() - 1, 1)
+  const startOfLastMonth = lastMonth.toISOString().split("T")[0]
+  const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0).toISOString().split("T")[0]
 
   const [
     membersResult,
@@ -20,8 +24,18 @@ export async function getDashboardStats() {
   ] = await Promise.all([
     supabase.from("members").select("id, status"),
     supabase.from("members").select("id").lte("created_at", endOfLastMonth),
-    supabase.from("payments").select("amount, status, method").gte("created_at", startOfMonth),
-    supabase.from("payments").select("amount, status, method").gte("created_at", startOfLastMonth).lt("created_at", startOfMonth),
+    // Filtrar pagos por payment_date (fecha del pago) en el mes actual
+    supabase
+      .from("payments")
+      .select("amount, status, method")
+      .gte("payment_date", startOfMonth)
+      .lte("payment_date", endOfMonth),
+    // Filtrar pagos del mes anterior
+    supabase
+      .from("payments")
+      .select("amount, status, method")
+      .gte("payment_date", startOfLastMonth)
+      .lte("payment_date", endOfLastMonth),
     supabase.from("plans").select("id").eq("active", true),
     supabase.from("special_classes").select("id, enrolled, capacity"),
   ])
@@ -140,10 +154,13 @@ export async function getMonthlyRevenueChart() {
 
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const startDate = date.toISOString().split("T")[0]
+    const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split("T")[0]
+    
     months.push({
       month: date.toLocaleDateString("es-ES", { month: "short" }),
-      start: date.toISOString(),
-      end: new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString(),
+      start: startDate,
+      end: endDate,
     })
   }
 
@@ -153,8 +170,8 @@ export async function getMonthlyRevenueChart() {
         .from("payments")
         .select("amount")
         .eq("status", "paid")
-        .gte("created_at", m.start)
-        .lte("created_at", m.end)
+        .gte("payment_date", m.start)
+        .lte("payment_date", m.end)
 
       const total = data?.reduce((sum, p) => sum + Number(p.amount), 0) || 0
       return { month: m.month, revenue: total }

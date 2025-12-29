@@ -18,6 +18,7 @@ export default function DashboardMainComponent() {
   const [selectedRate, setSelectedRate] = useState<"bcv" | "usdt" | "cash" | "custom">("bcv")
   const [activityModalOpen, setActivityModalOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [monthOffset, setMonthOffset] = useState(0)
 
   useEffect(() => {
     setIsClient(true)
@@ -29,8 +30,8 @@ export default function DashboardMainComponent() {
   })
 
   const { data: stats, isLoading: loadingStats } = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: getDashboardStats,
+    queryKey: ["dashboard-stats", monthOffset],
+    queryFn: () => getDashboardStats(monthOffset),
     refetchInterval: 30000, // Refrescar cada 30 segundos
   })
 
@@ -108,11 +109,34 @@ export default function DashboardMainComponent() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">
-            Bienvenido, {admin?.name || "Admin"}
-          </h1>
-          <p className="text-muted-foreground mt-2">Aquí está el resumen de tu gimnasio hoy</p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-balance">
+              Bienvenido, {admin?.name || "Admin"}
+            </h1>
+            <p className="text-muted-foreground mt-2">Aquí está el resumen de tu gimnasio hoy</p>
+          </div>
+          
+          {/* Month Selector */}
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setMonthOffset(monthOffset - 1)}
+            >
+              ← Anterior
+            </Button>
+            <span className="text-sm font-medium min-w-[120px] text-center">
+              {new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setMonthOffset(monthOffset + 1)}
+            >
+              Siguiente →
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
