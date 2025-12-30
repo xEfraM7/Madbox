@@ -24,18 +24,18 @@ export async function getDashboardStats(monthOffset: number = 0) {
   ] = await Promise.all([
     supabase.from("members").select("id, status"),
     supabase.from("members").select("id").lte("created_at", endOfLastMonth),
-    // Filtrar pagos por payment_date (fecha del pago) en el mes actual
+    // Filtrar pagos por due_date (fecha de activación) en el mes actual
     supabase
       .from("payments")
       .select("amount, status, method")
-      .gte("payment_date", startOfMonth)
-      .lte("payment_date", endOfMonth),
+      .gte("due_date", startOfMonth)
+      .lte("due_date", endOfMonth),
     // Filtrar pagos del mes anterior
     supabase
       .from("payments")
       .select("amount, status, method")
-      .gte("payment_date", startOfLastMonth)
-      .lte("payment_date", endOfLastMonth),
+      .gte("due_date", startOfLastMonth)
+      .lte("due_date", endOfLastMonth),
     supabase.from("plans").select("id").eq("active", true),
     supabase.from("special_classes").select("id, enrolled, capacity"),
   ])
@@ -170,8 +170,8 @@ export async function getMonthlyRevenueChart() {
         .from("payments")
         .select("amount")
         .eq("status", "paid")
-        .gte("payment_date", m.start)
-        .lte("payment_date", m.end)
+        .gte("due_date", m.start)
+        .lte("due_date", m.end)
 
       const total = data?.reduce((sum, p) => sum + Number(p.amount), 0) || 0
       return { month: m.month, revenue: total }
