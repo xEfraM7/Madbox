@@ -24,18 +24,16 @@ export async function getDashboardStats(monthOffset: number = 0) {
   ] = await Promise.all([
     supabase.from("members").select("id, status"),
     supabase.from("members").select("id").lte("created_at", endOfLastMonth),
-    // Filtrar pagos por due_date (fecha de activación) en el mes actual
     supabase
       .from("payments")
       .select("amount, status, method")
-      .gte("due_date", startOfMonth)
-      .lte("due_date", endOfMonth),
-    // Filtrar pagos del mes anterior
+      .gte("payment_date", startOfMonth)
+      .lte("payment_date", endOfMonth),
     supabase
       .from("payments")
       .select("amount, status, method")
-      .gte("due_date", startOfLastMonth)
-      .lte("due_date", endOfLastMonth),
+      .gte("payment_date", startOfLastMonth)
+      .lte("payment_date", endOfLastMonth),
     supabase.from("plans").select("id").eq("active", true),
     supabase.from("special_classes").select("id, enrolled, capacity"),
   ])
@@ -51,7 +49,6 @@ export async function getDashboardStats(monthOffset: number = 0) {
   const lastMonthTotal = lastMonthMembers.length || 1
   const membersGrowth = Math.round(((totalMembers - lastMonthTotal) / lastMonthTotal) * 100)
 
-  // Calcular ingresos del mes desglosados por tipo de moneda
   const bsMethods = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
   const usdtMethods = ["USDT"]
   const usdCashMethods = ["Efectivo", "Transferencia"]
@@ -99,18 +96,57 @@ export async function getRecentActivity() {
 
 function formatActivityAction(activity: any): string {
   const { action, entity_name, details } = activity
+  
+  const formatAmount = (amount: number, method?: string) => {
+    if (!amount) return ""
+    const num = Number(amount)
+    const formatted = num.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const bsMethods = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
+    if (method && bsMethods.includes(method)) return "Bs. " + formatted
+    if (method === "USDT") return formatted + " USDT"
+    if (method === "Efectivo" || method === "Transferencia") return "$" + formatted
+    return formatted
+  }
+
   switch (action) {
-    case "payment_registered": return `Registró pago de ${entity_name || "cliente"} por $${details?.amount || 0}`
-    case "payment_deleted": return `Eliminó pago de ${entity_name || "cliente"}`
-    case "member_created": return `Registró miembro: ${entity_name}`
-    case "member_updated": return `Actualizó miembro: ${entity_name}`
-    case "member_deleted": return `Eliminó miembro: ${entity_name}`
-    case "class_created": return `Creó clase: ${entity_name}`
-    case "class_deleted": return `Eliminó clase: ${entity_name}`
-    case "class_payment_registered": return `Pago de clase: ${entity_name}`
-    case "class_payment_deleted": return `Eliminó pago de clase`
-    case "rate_updated": return `Actualizó tasa ${entity_name} a ${details?.rate}`
-    default: return `${action}: ${entity_name || ""}`
+    case "payment_registered": {
+      const amt = formatAmount(details?.amount, details?.method)
+      const mtd = details?.method ? " (" + details.method + ")" : ""
+      return "Pago de " + (entity_name || "cliente") + ": " + amt + mtd
+    }
+    case "payment_deleted": return "Elimino pago de " + (entity_name || "cliente")
+    case "member_created": return "Nuevo miembro: " + entity_name
+    case "member_updated": return "Actualizo: " + entity_name
+    case "member_deleted": return "Elimino miembro: " + entity_name
+    case "class_created": return "Nueva clase: " + entity_name
+    case "class_deleted": return "Elimino clase: " + entity_name
+    case "class_payment_registered": {
+      const amt = formatAmount(details?.amount, details?.method)
+      const mtd = details?.method ? " (" + details.method + ")" : ""
+      return "Pago clase " + (entity_name || "") + ": " + amt + mtd
+    }
+    case "class_payment_deleted": return "Elimino pago de clase"
+    case "rate_updated": {
+      const rate = Number(details?.rate || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })
+      return "Tasa " + entity_name + ": Bs. " + rate
+    }
+    case "month_closed": return "Cerro mes: " + (details?.period || "")
+    case "monthly_closing_created": {
+      const period = entity_name || details?.period || ""
+      const [year, month] = period.split("-")
+      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+      const monthName = month ? monthNames[parseInt(month) - 1] : ""
+      const totalUsd = details?.total_revenue_usd ? "$" + Number(details.total_revenue_usd).toFixed(2) : ""
+      return "Cierre de " + monthName + " " + year + (totalUsd ? " - " + totalUsd : "")
+    }
+    case "funds_reset": {
+      const period = entity_name || details?.period || ""
+      const [year, month] = period.split("-")
+      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+      const monthName = month ? monthNames[parseInt(month) - 1] : ""
+      return "Fondos reiniciados - " + monthName + " " + year
+    }
+    default: return action + ": " + (entity_name || "")
   }
 }
 
@@ -122,7 +158,6 @@ function getActivityType(entityType: string): string {
     default: return "other"
   }
 }
-
 
 export async function getUpcomingPayments() {
   const supabase = await createClient()
@@ -149,43 +184,65 @@ export async function getUpcomingPayments() {
 
 export async function getMonthlyRevenueChart() {
   const supabase = await createClient()
-  const months = []
   const now = new Date()
+  const results = []
+
+  const { data: ratesData } = await supabase
+    .from("exchange_rates")
+    .select("type, rate")
+
+  const rates = ratesData || []
+  const bcvRate = Number(rates.find(r => r.type === "BCV")?.rate) || 1
 
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const monthName = date.toLocaleDateString("es-ES", { month: "short" })
     const startDate = date.toISOString().split("T")[0]
     const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split("T")[0]
-    
-    months.push({
-      month: date.toLocaleDateString("es-ES", { month: "short" }),
-      start: startDate,
-      end: endDate,
+
+    const { data: payments } = await supabase
+      .from("payments")
+      .select("amount, method, status")
+      .eq("status", "paid")
+      .gte("payment_date", startDate)
+      .lte("payment_date", endDate)
+
+    const { data: classPayments } = await supabase
+      .from("special_class_payments")
+      .select("amount, method, status")
+      .eq("status", "paid")
+      .gte("payment_date", startDate)
+      .lte("payment_date", endDate)
+
+    let bsTotal = 0
+    let usdCashTotal = 0
+    let usdtTotal = 0
+
+    const allPayments = [...(payments || []), ...(classPayments || [])]
+
+    allPayments.forEach((p: any) => {
+      const amount = Number(p.amount) || 0
+      if (["Pago Movil", "Efectivo bs", "Transferencia BS"].includes(p.method)) {
+        bsTotal += amount
+      } else if (p.method === "Efectivo") {
+        usdCashTotal += amount
+      } else if (["USDT", "Transferencia"].includes(p.method)) {
+        usdtTotal += amount
+      }
     })
+
+    const totalInUsd = (bsTotal / bcvRate) + usdCashTotal + usdtTotal
+    results.push({ month: monthName, revenue: Math.round(totalInUsd * 100) / 100 })
   }
-
-  const results = await Promise.all(
-    months.map(async (m) => {
-      const { data } = await supabase
-        .from("payments")
-        .select("amount")
-        .eq("status", "paid")
-        .gte("due_date", m.start)
-        .lte("due_date", m.end)
-
-      const total = data?.reduce((sum, p) => sum + Number(p.amount), 0) || 0
-      return { month: m.month, revenue: total }
-    })
-  )
 
   return results
 }
 
 function formatTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
-  if (seconds < 0) return "Próximamente"
+  if (seconds < 0) return "Proximamente"
   if (seconds < 60) return "Hace unos segundos"
-  if (seconds < 3600) return `Hace ${Math.floor(seconds / 60)} min`
-  if (seconds < 86400) return `Hace ${Math.floor(seconds / 3600)} horas`
-  return `Hace ${Math.floor(seconds / 86400)} días`
+  if (seconds < 3600) return "Hace " + Math.floor(seconds / 60) + " min"
+  if (seconds < 86400) return "Hace " + Math.floor(seconds / 3600) + " horas"
+  return "Hace " + Math.floor(seconds / 86400) + " dias"
 }

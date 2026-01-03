@@ -100,6 +100,74 @@ export async function getFundsWithConversion() {
   }
 }
 
+export async function getFundsWithConversionByMonth(monthOffset: number = 0) {
+  const supabase = await createClient()
+
+  const now = new Date()
+  const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1)
+  const startOfMonth = targetMonth.toISOString().split("T")[0]
+  const endOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).toISOString().split("T")[0]
+  
+  const [fundsResult, ratesResult, paymentsResult, classPaymentsResult] = await Promise.all([
+    supabase.from("funds").select("*"),
+    supabase.from("exchange_rates").select("*"),
+    supabase
+      .from("payments")
+      .select("amount, method, status")
+      .eq("status", "paid")
+      .gte("payment_date", startOfMonth)
+      .lte("payment_date", endOfMonth),
+    supabase
+      .from("special_class_payments")
+      .select("amount, method, status")
+      .eq("status", "paid")
+      .gte("payment_date", startOfMonth)
+      .lte("payment_date", endOfMonth),
+  ])
+
+  if (fundsResult.error) throw fundsResult.error
+  if (ratesResult.error) throw ratesResult.error
+
+  const rates = ratesResult.data || []
+  const payments = paymentsResult.data || []
+  const classPayments = classPaymentsResult.data || []
+
+  const bcvRate = rates.find(r => r.type === "BCV")?.rate || 1
+  const usdtRate = rates.find(r => r.type === "USDT")?.rate || 1
+  const customRate = rates.find(r => r.type === "CUSTOM")?.rate || 1
+
+  // Calcular totales de pagos del mes (membresías + clases especiales)
+  let bsTotal = 0
+  let usdCashTotal = 0
+  let usdtTotal = 0
+
+  const allPayments = [...payments, ...classPayments]
+  allPayments.forEach((p) => {
+    const amount = Number(p.amount)
+    if (p.method === "Pago Movil" || p.method === "Efectivo bs" || p.method === "Transferencia BS") {
+      bsTotal += amount
+    } else if (p.method === "Efectivo") {
+      usdCashTotal += amount
+    } else if (p.method === "USDT" || p.method === "Transferencia") {
+      usdtTotal += amount
+    }
+  })
+
+  // Calcular totales en USD
+  const bsInUsd = bsTotal / bcvRate
+  const totalInUsd = bsInUsd + usdCashTotal + usdtTotal
+
+  return {
+    funds: {
+      bs: { balance: bsTotal, inUsd: bsInUsd, rate: bcvRate },
+      usdCash: { balance: usdCashTotal, rate: usdtRate },
+      usdt: { balance: usdtTotal, rate: usdtRate },
+    },
+    rates: { bcv: bcvRate, usdt: usdtRate, cash: usdtRate, custom: customRate },
+    totalInUsd,
+  }
+}
+
 export async function addToFund(method: string, amount: number) {
   const fundType = PAYMENT_METHOD_TO_FUND[method]
   if (!fundType) return

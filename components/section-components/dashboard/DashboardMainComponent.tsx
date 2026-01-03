@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useState, useEffect } from "react"
 import { getDashboardStats, getRecentActivity, getUpcomingPayments, getMonthlyRevenueChart } from "@/lib/actions/dashboard"
 import { getAdmin } from "@/lib/actions/auth"
-import { getFundsWithConversion } from "@/lib/actions/funds"
+import { getFundsWithConversionByMonth } from "@/lib/actions/funds"
 import { ActivityLogModal } from "@/components/shared/activity-log-modal"
 
 export default function DashboardMainComponent() {
@@ -46,14 +46,14 @@ export default function DashboardMainComponent() {
     queryFn: getUpcomingPayments,
   })
 
-  const { data: revenueChart = [] } = useQuery({
+  const { data: revenueChart = [], isLoading: loadingRevenueChart } = useQuery({
     queryKey: ["revenue-chart"],
     queryFn: getMonthlyRevenueChart,
   })
 
   const { data: fundsData, isLoading: loadingFunds } = useQuery({
-    queryKey: ["funds"],
-    queryFn: getFundsWithConversion,
+    queryKey: ["funds", monthOffset],
+    queryFn: () => getFundsWithConversionByMonth(monthOffset),
     refetchInterval: 30000, // Refrescar cada 30 segundos
   })
 
@@ -190,7 +190,7 @@ export default function DashboardMainComponent() {
                 <Skeleton className="h-8 w-24" />
               ) : (
                 <>
-                  <div className="text-3xl font-bold text-green-500">{formatCurrency(calculateMonthlyRevenueInUsd())}</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-green-500 break-words">{formatCurrency(calculateMonthlyRevenueInUsd())}</div>
                   <div className="flex items-center text-xs text-muted-foreground mt-1">
                     {(stats?.revenueGrowth || 0) >= 0 ? (
                       <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
@@ -353,28 +353,78 @@ export default function DashboardMainComponent() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           {/* Revenue Chart */}
           <Card className="col-span-full lg:col-span-4">
-            <CardHeader>
-              <CardTitle>Ingresos Mensuales</CardTitle>
-              <CardDescription>Últimos 6 meses</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[200px] flex items-end justify-between gap-2">
-                {revenueChart.map((item, index) => {
-                  const maxRevenue = Math.max(...revenueChart.map((r) => r.revenue), 1)
-                  const height = (item.revenue / maxRevenue) * 100
-                  return (
-                    <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                      <div className="w-full bg-muted rounded-t relative" style={{ height: `${Math.max(height, 5)}%` }}>
-                        <div
-                          className="absolute inset-0 bg-primary rounded-t transition-all hover:bg-primary/80"
-                          style={{ height: "100%" }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground capitalize">{item.month}</span>
-                    </div>
-                  )
-                })}
+            <CardHeader className="pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base sm:text-lg">Ingresos Mensuales</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Últimos 6 meses en USD</CardDescription>
+                </div>
+                {!loadingRevenueChart && revenueChart.length > 0 && (
+                  <div className="text-left sm:text-right">
+                    <p className="text-xl sm:text-2xl font-bold text-primary">
+                      ${revenueChart.reduce((sum, r) => sum + r.revenue, 0).toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Total 6 meses</p>
+                  </div>
+                )}
               </div>
+            </CardHeader>
+            <CardContent className="px-2 sm:px-4 pb-4">
+              {loadingRevenueChart ? (
+                <div className="h-[140px] sm:h-[160px] flex items-end gap-1 sm:gap-2">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1">
+                      <Skeleton className="w-full h-20 sm:h-24" />
+                      <Skeleton className="w-6 h-3" />
+                    </div>
+                  ))}
+                </div>
+              ) : revenueChart.length === 0 ? (
+                <div className="h-[140px] sm:h-[160px] flex items-center justify-center">
+                  <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
+                </div>
+              ) : (
+                <div className="h-[140px] sm:h-[160px] flex items-end gap-1 sm:gap-2">
+                  {revenueChart.map((item, index) => {
+                    const maxRevenue = Math.max(...revenueChart.map((r) => r.revenue), 1)
+                    const heightPercent = Math.max((item.revenue / maxRevenue) * 100, 6)
+                    const barHeight = (heightPercent / 100) * 100
+                    const isCurrentMonth = index === revenueChart.length - 1
+                    const hasValue = item.revenue > 0
+                    
+                    return (
+                      <div key={index} className="flex-1 flex flex-col items-center justify-end group relative">
+                        {/* Tooltip on hover */}
+                        <div className="hidden sm:block absolute -top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-popover border rounded-md px-2 py-1 shadow-lg z-10 whitespace-nowrap">
+                          <p className="text-xs font-medium">${item.revenue.toLocaleString("es-ES", { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        
+                        {/* Value label above bar */}
+                        {hasValue && (
+                          <span className="text-[8px] sm:text-[10px] font-medium text-muted-foreground mb-0.5">
+                            ${item.revenue >= 1000 ? Math.round(item.revenue / 1000) + "k" : Math.round(item.revenue)}
+                          </span>
+                        )}
+                        
+                        {/* Bar */}
+                        <div 
+                          className={`w-full rounded-t transition-all cursor-pointer ${
+                            isCurrentMonth 
+                              ? "bg-primary hover:bg-primary/90" 
+                              : "bg-primary/60 hover:bg-primary/80"
+                          }`}
+                          style={{ height: `${barHeight}px`, minHeight: "8px" }}
+                        />
+                        
+                        {/* Month label */}
+                        <span className={`text-[9px] sm:text-xs mt-1 capitalize ${isCurrentMonth ? "font-semibold text-primary" : "text-muted-foreground"}`}>
+                          {item.month.substring(0, 3)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
