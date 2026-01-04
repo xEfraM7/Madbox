@@ -190,7 +190,7 @@ export default function DashboardMainComponent() {
                 <Skeleton className="h-8 w-24" />
               ) : (
                 <>
-                  <div className="text-2xl sm:text-3xl font-bold text-green-500 break-words">{formatCurrency(calculateMonthlyRevenueInUsd())}</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-green-500 wrap-break-word">{formatCurrency(calculateMonthlyRevenueInUsd())}</div>
                   <div className="flex items-center text-xs text-muted-foreground mt-1">
                     {(stats?.revenueGrowth || 0) >= 0 ? (
                       <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
