@@ -116,23 +116,33 @@ export function UserDetailModal({ open, onOpenChange, user }: UserDetailModalPro
                   <p className="text-sm text-muted-foreground text-center py-4">No hay pagos registrados</p>
                 ) : (
                   <div className="space-y-3">
-                    {payments.map((payment: any) => (
-                      <div key={payment.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-3">
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{formatDate(payment.payment_date)}</p>
-                            <p className="text-xs text-muted-foreground">{payment.method || "Sin método"}</p>
+                    {payments.map((payment: any) => {
+                      // Determinar la moneda según el método de pago
+                      const bsMethods = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
+                      const isBs = bsMethods.includes(payment.method)
+                      const currencySymbol = isBs ? "Bs." : "$"
+                      const formattedAmount = isBs 
+                        ? Number(payment.amount).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : Number(payment.amount).toFixed(2)
+                      
+                      return (
+                        <div key={payment.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                          <div className="flex items-center gap-3">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{formatDate(payment.payment_date)}</p>
+                              <p className="text-xs text-muted-foreground">{payment.method || "Sin método"}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{currencySymbol} {formattedAmount}</p>
+                            <Badge variant={paymentStatusLabels[payment.status]?.variant || "secondary"} className="text-xs">
+                              {paymentStatusLabels[payment.status]?.label || payment.status}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">${Number(payment.amount).toFixed(2)}</p>
-                          <Badge variant={paymentStatusLabels[payment.status]?.variant || "secondary"} className="text-xs">
-                            {paymentStatusLabels[payment.status]?.label || payment.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>
