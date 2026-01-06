@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { DashboardLayout } from "@/components/dashboard-layout"
+import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Plus, MoreVertical, Edit, Trash2, Calendar } from "lucide-react"
 import { ClassFormModal } from "@/components/section-components/classes/modals/class-form-modal"
-import { SpecialPaymentModal } from "@/components/special-payment-modal"
+import { SpecialPaymentModal } from "@/components/section-components/classes/modals/special-payment-modal"
 
 const classesData = [
   {
