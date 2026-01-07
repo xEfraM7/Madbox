@@ -16,7 +16,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { PaymentDetailModal } from "@/components/shared/payment-detail-modal"
 import { getPayments, deletePayment } from "@/lib/actions/payments"
 import { getMembers } from "@/lib/actions/members"
-import { getPaymentsFundsSummary, getExchangeRates } from "@/lib/actions/funds"
+import { getPaymentsFundsSummaryByMonth, getExchangeRates } from "@/lib/actions/funds"
 
 
 
@@ -42,14 +42,23 @@ export default function PaymentsMainComponent() {
   })
 
   const { data: fundsSummary } = useQuery({
-    queryKey: ["payments-funds-summary"],
-    queryFn: getPaymentsFundsSummary,
+    queryKey: ["payments-funds-summary-month"],
+    queryFn: () => getPaymentsFundsSummaryByMonth(0),
   })
 
   const { data: exchangeRates = [] } = useQuery({
     queryKey: ["exchange-rates"],
     queryFn: getExchangeRates,
   })
+
+  // Obtener mes actual
+  const today = new Date()
+  const currentMonth = today.getMonth()
+  const currentYear = today.getFullYear()
+  const monthStart = new Date(currentYear, currentMonth, 1).toISOString().split("T")[0]
+  const monthEnd = new Date(currentYear, currentMonth + 1, 0).toISOString().split("T")[0]
+  
+  const currentMonthName = today.toLocaleDateString("es-ES", { month: "long", year: "numeric" })
 
   const bcvRate = exchangeRates.find((r: any) => r.type === "BCV")?.rate || 1
   const usdtRate = exchangeRates.find((r: any) => r.type === "USDT")?.rate || 1
@@ -89,7 +98,7 @@ export default function PaymentsMainComponent() {
     mutationFn: (id: string) => deletePayment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] })
-      queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["payments-funds-summary-month"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
       toast.success("Pago eliminado", { description: "El pago ha sido eliminado correctamente." })
       setDeleteDialogOpen(false)
@@ -102,7 +111,13 @@ export default function PaymentsMainComponent() {
 
   const expiredMembers = members.filter((m: any) => m.status === "expired")
 
-  const filteredPayments = payments.filter((payment: any) => {
+  // Filtrar pagos del mes actual
+  const currentMonthPayments = payments.filter((payment: any) => {
+    const paymentDate = payment.payment_date
+    return paymentDate >= monthStart && paymentDate <= monthEnd
+  })
+
+  const filteredPayments = currentMonthPayments.filter((payment: any) => {
     const matchesSearch = payment.members?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           payment.members?.email?.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
@@ -134,7 +149,10 @@ export default function PaymentsMainComponent() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-balance">Gestión de Pagos</h1>
-            <p className="text-muted-foreground mt-2">Administra todos los pagos y mensualidades</p>
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-muted-foreground">Mostrando pagos de</p>
+              <Badge variant="secondary" className="capitalize">{currentMonthName}</Badge>
+            </div>
           </div>
           <Button onClick={() => { setSelectedPayment(null); setIsModalOpen(true) }}>
             <Plus className="mr-2 h-4 w-4" />

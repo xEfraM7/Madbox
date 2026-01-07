@@ -284,6 +284,42 @@ export async function getPaymentsFundsSummary() {
   return { bs, usdCash, usdt }
 }
 
+// Obtener totales de pagos del mes actual
+export async function getPaymentsFundsSummaryByMonth(monthOffset: number = 0) {
+  const supabase = await createClient()
+  
+  const now = new Date()
+  const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1)
+  const startOfMonth = targetMonth.toISOString().split("T")[0]
+  const endOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).toISOString().split("T")[0]
+
+  const { data: payments } = await supabase
+    .from("payments")
+    .select("amount, method, status, payment_date")
+    .eq("status", "paid")
+    .gte("payment_date", startOfMonth)
+    .lte("payment_date", endOfMonth)
+
+  if (!payments) return { bs: 0, usdCash: 0, usdt: 0 }
+
+  let bs = 0
+  let usdCash = 0
+  let usdt = 0
+
+  payments.forEach((p) => {
+    const amount = Number(p.amount)
+    if (p.method === "Pago Movil" || p.method === "Efectivo bs" || p.method === "Transferencia BS") {
+      bs += amount
+    } else if (p.method === "Efectivo") {
+      usdCash += amount
+    } else if (p.method === "USDT" || p.method === "Transferencia") {
+      usdt += amount
+    }
+  })
+
+  return { bs, usdCash, usdt }
+}
+
 // Obtener totales de pagos de clases especiales por método
 export async function getSpecialClassPaymentsFundsSummary() {
   const supabase = await createClient()
