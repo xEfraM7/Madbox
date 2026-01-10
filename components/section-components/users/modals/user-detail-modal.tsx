@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -48,11 +48,11 @@ export function UserDetailModal({ open, onOpenChange, user }: UserDetailModalPro
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
       const action = user?.frozen ? "descongelada" : "congelada"
-      toast.success(`Membresía ${action}`, { description: `La membresía de ${user?.name} ha sido ${action}.` })
+      showToast.success(`Membresía ${action}`, `La membresía de ${user?.name} ha sido ${action}.`)
       setFreezeDialogOpen(false)
     },
     onError: () => {
-      toast.error("Error", { description: `No se pudo ${user?.frozen ? "descongelar" : "congelar"} la membresía.` })
+      showToast.error("Error", `No se pudo ${user?.frozen ? "descongelar" : "congelar"} la membresía.`)
     },
   })
 
@@ -121,10 +121,10 @@ export function UserDetailModal({ open, onOpenChange, user }: UserDetailModalPro
                       const bsMethods = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
                       const isBs = bsMethods.includes(payment.method)
                       const currencySymbol = isBs ? "Bs." : "$"
-                      const formattedAmount = isBs 
+                      const formattedAmount = isBs
                         ? Number(payment.amount).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                         : Number(payment.amount).toFixed(2)
-                      
+
                       return (
                         <div key={payment.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
                           <div className="flex items-center gap-3">
@@ -164,7 +164,7 @@ export function UserDetailModal({ open, onOpenChange, user }: UserDetailModalPro
         open={freezeDialogOpen}
         onOpenChange={setFreezeDialogOpen}
         title={user.frozen ? "Descongelar membresía" : "Congelar membresía"}
-        description={user.frozen 
+        description={user.frozen
           ? `¿Deseas reactivar la membresía de ${user.name}?`
           : `¿Deseas congelar la membresía de ${user.name}? El cliente no podrá acceder al gimnasio mientras esté congelado.`
         }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -32,11 +32,11 @@ export function PaymentDateModal({ open, onOpenChange, user }: PaymentDateModalP
     mutationFn: ({ id, date }: { id: string; date: string }) => updatePaymentDate(id, date),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
-      toast.success("Fecha actualizada", { description: `La fecha de pago de ${user?.name} ha sido actualizada.` })
+      showToast.success("Fecha actualizada", `La fecha de pago de ${user?.name} ha sido actualizada.`)
       onOpenChange(false)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo actualizar la fecha de pago." })
+      showToast.error("Error", "No se pudo actualizar la fecha de pago.")
     },
   })
 

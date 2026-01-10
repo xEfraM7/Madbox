@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,11 +56,11 @@ export function PlanFormModal({ open, onOpenChange, plan }: PlanFormModalProps) 
     mutationFn: (data: any) => createPlan(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plans"] })
-      toast.success("Plan creado", { description: "El plan ha sido creado correctamente." })
+      showToast.success("Plan creado", "El plan ha sido creado correctamente." )
       onOpenChange(false)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo crear el plan." })
+      showToast.error("Error", "No se pudo crear el plan." )
     },
   })
 
@@ -68,11 +68,11 @@ export function PlanFormModal({ open, onOpenChange, plan }: PlanFormModalProps) 
     mutationFn: (data: any) => updatePlan(plan.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plans"] })
-      toast.success("Plan actualizado", { description: "Los cambios han sido guardados." })
+      showToast.success("Plan actualizado", "Los cambios han sido guardados." )
       onOpenChange(false)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo actualizar el plan." })
+      showToast.error("Error", "No se pudo actualizar el plan." )
     },
   })
 

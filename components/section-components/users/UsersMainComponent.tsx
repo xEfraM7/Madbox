@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,12 +54,12 @@ export default function UsersMainComponent() {
       queryClient.invalidateQueries({ queryKey: ["members"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
-      toast.success("Cliente eliminado", { description: `${clientToAction?.name} ha sido eliminado correctamente.` })
+      showToast.success("Cliente eliminado", `${clientToAction?.name} ha sido eliminado correctamente.`)
       setDeleteDialogOpen(false)
       setClientToAction(null)
     },
     onError: () => {
-      toast.error("Error al eliminar", { description: "No se pudo eliminar el cliente. Intenta de nuevo." })
+      showToast.error("Error al eliminar", "No se pudo eliminar el cliente. Intenta de nuevo.")
     },
   })
 
@@ -68,12 +68,12 @@ export default function UsersMainComponent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] })
       const action = clientToAction?.frozen ? "descongelada" : "congelada"
-      toast.success(`Membresía ${action}`, { description: `La membresía de ${clientToAction?.name} ha sido ${action}.` })
+      showToast.success(`Membresía ${action}`, `La membresía de ${clientToAction?.name} ha sido ${action}.`)
       setFreezeDialogOpen(false)
       setClientToAction(null)
     },
     onError: () => {
-      toast.error("Error", { description: `No se pudo ${clientToAction?.frozen ? "descongelar" : "congelar"} la membresía.` })
+      showToast.error("Error", `No se pudo ${clientToAction?.frozen ? "descongelar" : "congelar"} la membresía.`)
     },
   })
 
@@ -191,7 +191,7 @@ export default function UsersMainComponent() {
 
       <UserFormModal open={isModalOpen} onOpenChange={setIsModalOpen} user={selectedClient} />
       <UserDetailModal open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen} user={selectedClient} />
-      
+
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -207,7 +207,7 @@ export default function UsersMainComponent() {
         open={freezeDialogOpen}
         onOpenChange={setFreezeDialogOpen}
         title={clientToAction?.frozen ? "Descongelar membresía" : "Congelar membresía"}
-        description={clientToAction?.frozen 
+        description={clientToAction?.frozen
           ? `¿Deseas reactivar la membresía de ${clientToAction?.name}?`
           : `¿Deseas congelar la membresía de ${clientToAction?.name}? El cliente no podrá acceder al gimnasio mientras esté congelado.`
         }

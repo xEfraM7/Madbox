@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -168,11 +168,11 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["members"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
-      toast.success("Pago registrado", { description: "El pago ha sido registrado correctamente." })
+      showToast.success("Pago registrado", "El pago ha sido registrado correctamente." )
       onOpenChange(false)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo registrar el pago." })
+      showToast.error("Error", "No se pudo registrar el pago." )
     },
   })
 
@@ -182,11 +182,11 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       queryClient.invalidateQueries({ queryKey: ["payments"] })
       queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["members"] })
-      toast.success("Pago actualizado", { description: "Los cambios han sido guardados." })
+      showToast.success("Pago actualizado", "Los cambios han sido guardados." )
       onOpenChange(false)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo actualizar el pago." })
+      showToast.error("Error", "No se pudo actualizar el pago." )
     },
   })
 

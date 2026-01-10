@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -141,22 +141,22 @@ export default function RolesMainComponent() {
     mutationFn: (id: string) => deleteAdmin(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admins"] })
-      toast.success("Administrador eliminado", { description: `${adminToDelete?.name} ha sido eliminado.` })
+      showToast.success("Administrador eliminado", `${adminToDelete?.name} ha sido eliminado.`)
       setDeleteAdminDialog(false)
       setAdminToDelete(null)
     },
-    onError: () => toast.error("Error", { description: "No se pudo eliminar el administrador." }),
+    onError: () => showToast.error("Error", "No se pudo eliminar el administrador."),
   })
 
   const deleteRoleMutation = useMutation({
     mutationFn: (id: string) => deleteRole(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roles"] })
-      toast.success("Rol eliminado", { description: `${roleToDelete?.name} ha sido eliminado.` })
+      showToast.success("Rol eliminado", `${roleToDelete?.name} ha sido eliminado.`)
       setDeleteRoleDialog(false)
       setRoleToDelete(null)
     },
-    onError: () => toast.error("Error", { description: "No se pudo eliminar el rol. Puede tener administradores asignados." }),
+    onError: () => showToast.error("Error", "No se pudo eliminar el rol. Puede tener administradores asignados."),
   })
 
   const deleteUserMutation = useMutation({
@@ -165,11 +165,11 @@ export default function RolesMainComponent() {
       queryClient.invalidateQueries({ queryKey: ["all-auth-users"] })
       queryClient.invalidateQueries({ queryKey: ["all-admins"] })
       queryClient.invalidateQueries({ queryKey: ["admins"] })
-      toast.success("Usuario eliminado", { description: `${userToDelete?.email} ha sido eliminado.` })
+      showToast.success("Usuario eliminado", `${userToDelete?.email} ha sido eliminado.`)
       setDeleteUserDialog(false)
       setUserToDelete(null)
     },
-    onError: () => toast.error("Error", { description: "No se pudo eliminar el usuario." }),
+    onError: () => showToast.error("Error", "No se pudo eliminar el usuario."),
   })
 
   const getAdminCountByRole = (roleId: string) => {

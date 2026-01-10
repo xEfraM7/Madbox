@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -100,12 +100,12 @@ export default function PaymentsMainComponent() {
       queryClient.invalidateQueries({ queryKey: ["payments"] })
       queryClient.invalidateQueries({ queryKey: ["payments-funds-summary-month"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
-      toast.success("Pago eliminado", { description: "El pago ha sido eliminado correctamente." })
+      showToast.success("Pago eliminado", "El pago ha sido eliminado correctamente." )
       setDeleteDialogOpen(false)
       setPaymentToDelete(null)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo eliminar el pago." })
+      showToast.error("Error", "No se pudo eliminar el pago." )
     },
   })
 

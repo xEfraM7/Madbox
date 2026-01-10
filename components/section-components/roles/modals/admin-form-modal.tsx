@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -75,20 +75,20 @@ export function AdminFormModal({ open, onOpenChange, admin, roles }: AdminFormMo
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admins"] })
       queryClient.invalidateQueries({ queryKey: ["auth-users"] })
-      toast.success("Administrador creado", { description: "El administrador ha sido registrado correctamente." })
+      showToast.success("Administrador creado", "El administrador ha sido registrado correctamente." )
       onOpenChange(false)
     },
-    onError: () => toast.error("Error", { description: "No se pudo crear el administrador." }),
+    onError: () => showToast.error("Error", "No se pudo crear el administrador." ),
   })
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => updateAdmin(admin.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admins"] })
-      toast.success("Administrador actualizado", { description: "Los cambios han sido guardados." })
+      showToast.success("Administrador actualizado", "Los cambios han sido guardados." )
       onOpenChange(false)
     },
-    onError: () => toast.error("Error", { description: "No se pudo actualizar el administrador." }),
+    onError: () => showToast.error("Error", "No se pudo actualizar el administrador." ),
   })
 
   const onSubmit = (data: FormData) => {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -118,10 +118,10 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
       const message = registerFirstPayment
         ? `${variables.name} ha sido registrado con su primer pago.`
         : `${variables.name} ha sido registrado sin pago inicial.`
-      toast.success("Cliente creado", { description: message })
+      showToast.success("Cliente creado", message)
       onOpenChange(false)
     },
-    onError: () => toast.error("Error", { description: "No se pudo crear el cliente." }),
+    onError: () => showToast.error("Error", "No se pudo crear el cliente."),
   })
 
   const updateMutation = useMutation({
@@ -130,10 +130,10 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
       queryClient.invalidateQueries({ queryKey: ["members"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
-      toast.success("Cliente actualizado", { description: `${variables.name} ha sido actualizado correctamente.` })
+      showToast.success("Cliente actualizado", `${variables.name} ha sido actualizado correctamente.`)
       onOpenChange(false)
     },
-    onError: () => toast.error("Error", { description: "No se pudo actualizar el cliente." }),
+    onError: () => showToast.error("Error", "No se pudo actualizar el cliente."),
   })
 
   useEffect(() => {
@@ -289,12 +289,12 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
                     {METHODS_IN_BS.includes(paymentMethod) && (
                       <div className="grid gap-2">
                         <Label>Tasa del pago (opcional)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          placeholder="Ej: 45.50" 
-                          value={paymentRate} 
-                          onChange={(e) => setPaymentRate(e.target.value)} 
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Ej: 45.50"
+                          value={paymentRate}
+                          onChange={(e) => setPaymentRate(e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">Tasa Bs/USD al momento del pago</p>
                       </div>

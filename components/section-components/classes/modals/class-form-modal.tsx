@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -67,11 +67,11 @@ export function ClassFormModal({ open, onOpenChange, classItem }: ClassFormModal
     mutationFn: (data: any) => createSpecialClass(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["special-classes"] })
-      toast.success("Clase creada", { description: "La clase ha sido creada correctamente." })
+      showToast.success("Clase creada", "La clase ha sido creada correctamente." )
       onOpenChange(false)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo crear la clase." })
+      showToast.error("Error", "No se pudo crear la clase." )
     },
   })
 
@@ -79,11 +79,11 @@ export function ClassFormModal({ open, onOpenChange, classItem }: ClassFormModal
     mutationFn: (data: any) => updateSpecialClass(classItem.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["special-classes"] })
-      toast.success("Clase actualizada", { description: "Los cambios han sido guardados." })
+      showToast.success("Clase actualizada", "Los cambios han sido guardados." )
       onOpenChange(false)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo actualizar la clase." })
+      showToast.error("Error", "No se pudo actualizar la clase." )
     },
   })
 

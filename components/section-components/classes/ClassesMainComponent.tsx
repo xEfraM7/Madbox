@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -74,12 +74,12 @@ export default function ClassesMainComponent() {
     mutationFn: (id: string) => deleteSpecialClass(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["special-classes"] })
-      toast.success("Clase eliminada", { description: `${classToDelete?.name} ha sido eliminada.` })
+      showToast.success("Clase eliminada", `${classToDelete?.name} ha sido eliminada.`)
       setDeleteDialogOpen(false)
       setClassToDelete(null)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo eliminar la clase." })
+      showToast.error("Error", "No se pudo eliminar la clase.")
     },
   })
 
@@ -89,12 +89,12 @@ export default function ClassesMainComponent() {
       queryClient.invalidateQueries({ queryKey: ["special-class-payments"] })
       queryClient.invalidateQueries({ queryKey: ["special-class-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
-      toast.success("Pago eliminado", { description: "El pago ha sido eliminado correctamente." })
+      showToast.success("Pago eliminado", "El pago ha sido eliminado correctamente.")
       setDeletePaymentDialogOpen(false)
       setPaymentToDelete(null)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo eliminar el pago." })
+      showToast.error("Error", "No se pudo eliminar el pago.")
     },
   })
 
@@ -116,12 +116,12 @@ export default function ClassesMainComponent() {
     const match = schedule.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/)
     if (match) {
       const dateObj = new Date(match[1] + "T00:00:00")
-      const formattedDate = dateObj.toLocaleDateString("es-ES", { 
-        weekday: "short", 
-        day: "numeric", 
-        month: "short" 
+      const formattedDate = dateObj.toLocaleDateString("es-ES", {
+        weekday: "short",
+        day: "numeric",
+        month: "short"
       })
-      return { 
+      return {
         date: formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1),
         time: `${match[2]} - ${match[3]}`
       }
@@ -135,7 +135,7 @@ export default function ClassesMainComponent() {
     const usdCash = fundsSummary?.usdCash || 0
     const usdt = fundsSummary?.usdt || 0
     const rate = getRateValue()
-    
+
     const bsInUsd = bs / rate
     return bsInUsd + usdCash + usdt
   }
@@ -278,7 +278,7 @@ export default function ClassesMainComponent() {
                           </div>
                         )}
                       </div>
-                      
+
                     </div>
                   </CardContent>
                 </Card>

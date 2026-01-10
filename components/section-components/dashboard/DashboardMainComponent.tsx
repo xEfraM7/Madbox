@@ -89,7 +89,7 @@ export default function DashboardMainComponent() {
     const usdCash = fundsData?.funds.usdCash.balance || 0
     const usdt = fundsData?.funds.usdt.balance || 0
     const rate = getRateValue()
-    
+
     const bsInUsd = bsBalance / rate
     return bsInUsd + usdCash + usdt
   }
@@ -98,10 +98,10 @@ export default function DashboardMainComponent() {
     if (!stats?.monthlyRevenueByType) {
       return stats?.monthlyRevenue || 0
     }
-    
+
     const { bs, usdCash, usdt } = stats.monthlyRevenueByType
     const rate = getRateValue()
-    
+
     const bsInUsd = (bs || 0) / rate
     return bsInUsd + (usdCash || 0) + (usdt || 0)
   }
@@ -116,11 +116,11 @@ export default function DashboardMainComponent() {
             </h1>
             <p className="text-muted-foreground mt-2">Aquí está el resumen de tu gimnasio hoy</p>
           </div>
-          
+
           {/* Month Selector */}
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setMonthOffset(monthOffset - 1)}
             >
@@ -129,8 +129,8 @@ export default function DashboardMainComponent() {
             <span className="text-sm font-medium min-w-[120px] text-center">
               {new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
             </span>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setMonthOffset(monthOffset + 1)}
             >
@@ -355,9 +355,24 @@ export default function DashboardMainComponent() {
           <Card className="col-span-full lg:col-span-4">
             <CardHeader className="pb-2">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <CardTitle className="text-base sm:text-lg">Ingresos Mensuales</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">Últimos 6 meses en USD</CardDescription>
+                <div className="flex items-center gap-2">
+                  <div>
+                    <CardTitle className="text-base sm:text-lg">Ingresos Mensuales</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Últimos 6 meses en USD</CardDescription>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-6 text-xs px-2">
+                        {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : selectedRate === "custom" ? "Custom" : "Efectivo"}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSelectedRate("custom")}>Tasa Personalizada</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 {!loadingRevenueChart && revenueChart.length > 0 && (
                   <div className="text-left sm:text-right">
@@ -391,31 +406,30 @@ export default function DashboardMainComponent() {
                     const barHeight = (heightPercent / 100) * 100
                     const isCurrentMonth = index === revenueChart.length - 1
                     const hasValue = item.revenue > 0
-                    
+
                     return (
                       <div key={index} className="flex-1 flex flex-col items-center justify-end group relative">
                         {/* Tooltip on hover */}
                         <div className="hidden sm:block absolute -top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-popover border rounded-md px-2 py-1 shadow-lg z-10 whitespace-nowrap">
                           <p className="text-xs font-medium">${item.revenue.toLocaleString("es-ES", { minimumFractionDigits: 2 })}</p>
                         </div>
-                        
+
                         {/* Value label above bar */}
                         {hasValue && (
                           <span className="text-[8px] sm:text-[10px] font-medium text-muted-foreground mb-0.5">
                             ${item.revenue >= 1000 ? Math.round(item.revenue / 1000) + "k" : Math.round(item.revenue)}
                           </span>
                         )}
-                        
+
                         {/* Bar */}
-                        <div 
-                          className={`w-full rounded-t transition-all cursor-pointer ${
-                            isCurrentMonth 
-                              ? "bg-primary hover:bg-primary/90" 
+                        <div
+                          className={`w-full rounded-t transition-all cursor-pointer ${isCurrentMonth
+                              ? "bg-primary hover:bg-primary/90"
                               : "bg-primary/60 hover:bg-primary/80"
-                          }`}
+                            }`}
                           style={{ height: `${barHeight}px`, minHeight: "8px" }}
                         />
-                        
+
                         {/* Month label */}
                         <span className={`text-[9px] sm:text-xs mt-1 capitalize ${isCurrentMonth ? "font-semibold text-primary" : "text-muted-foreground"}`}>
                           {item.month.substring(0, 3)}
@@ -458,10 +472,9 @@ export default function DashboardMainComponent() {
                   {activities.map((activity, index) => (
                     <div key={index} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
                       <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${
-                          activity.type === "payment" ? "bg-green-500" :
-                          activity.type === "member" ? "bg-blue-500" : "bg-purple-500"
-                        }`} />
+                        <div className={`w-2 h-2 rounded-full ${activity.type === "payment" ? "bg-green-500" :
+                            activity.type === "member" ? "bg-blue-500" : "bg-purple-500"
+                          }`} />
                         <div>
                           <p className="text-sm font-medium">{activity.user}</p>
                           <p className="text-xs text-muted-foreground">{activity.action}</p>

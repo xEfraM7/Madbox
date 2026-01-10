@@ -24,7 +24,7 @@ import {
   Calendar
 } from "lucide-react"
 import { exportMonthlyClosing } from "@/lib/actions/closings"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import type { MonthlyClosing } from "@/types/database"
 
 interface ClosingDetailModalProps {
@@ -51,10 +51,10 @@ export function ClosingDetailModal({ open, onOpenChange, closing }: ClosingDetai
       document.body.removeChild(element)
     },
     onSuccess: () => {
-      toast.success("Cierre exportado exitosamente")
+      showToast.success("Cierre exportado exitosamente")
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Error al exportar")
+      showToast.error(error instanceof Error ? error.message : "Error al exportar")
     },
   })
 

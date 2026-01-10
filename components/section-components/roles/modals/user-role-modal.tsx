@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -44,21 +44,19 @@ export function UserRoleModal({ open, onOpenChange, user, roles }: UserRoleModal
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-admins"] })
       queryClient.invalidateQueries({ queryKey: ["admins"] })
-      toast.success("Rol actualizado", {
-        description: `Se ha actualizado el rol del usuario.`,
-      })
+      showToast.success("Rol actualizado", `Se ha actualizado el rol del usuario.`,
+      )
       onOpenChange(false)
     },
     onError: (error: Error) => {
-      toast.error("Error al actualizar rol", {
-        description: error.message || "No se pudo actualizar el rol",
-      })
+      showToast.error("Error al actualizar rol", error.message || "No se pudo actualizar el rol",
+      )
     },
   })
 
   const onSubmit = (data: FormData) => {
     if (!user?.id) {
-      toast.error("Usuario no encontrado")
+      showToast.error("Usuario no encontrado")
       return
     }
     updateMutation.mutate({ id: user.id, roleId: data.role_id })

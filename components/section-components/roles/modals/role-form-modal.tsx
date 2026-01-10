@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -60,20 +60,20 @@ export function RoleFormModal({ open, onOpenChange, role }: RoleFormModalProps) 
     mutationFn: (data: any) => createRole(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roles"] })
-      toast.success("Rol creado", { description: "El rol ha sido creado correctamente." })
+      showToast.success("Rol creado", "El rol ha sido creado correctamente." )
       onOpenChange(false)
     },
-    onError: () => toast.error("Error", { description: "No se pudo crear el rol." }),
+    onError: () => showToast.error("Error", "No se pudo crear el rol." ),
   })
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => updateRole(role.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roles"] })
-      toast.success("Rol actualizado", { description: "Los cambios han sido guardados." })
+      showToast.success("Rol actualizado", "Los cambios han sido guardados." )
       onOpenChange(false)
     },
-    onError: () => toast.error("Error", { description: "No se pudo actualizar el rol." }),
+    onError: () => showToast.error("Error", "No se pudo actualizar el rol." ),
   })
 
   const onSubmit = (data: FormData) => {

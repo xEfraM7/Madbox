@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,15 +39,12 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["all-auth-users"] })
       queryClient.invalidateQueries({ queryKey: ["admins"] })
-      toast.success("Invitación enviada", {
-        description: `Se ha enviado una invitación a ${variables.email}. Se le asignó el rol "Basica".`,
-      })
+      showToast.success("Invitación enviada", `Se ha enviado una invitación a ${variables.email}. Se le asignó el rol "Basica".`)
       onOpenChange(false)
     },
     onError: (error: Error) => {
-      toast.error("Error al enviar invitación", {
-        description: error.message || "No se pudo enviar la invitación",
-      })
+      showToast.error("Error al enviar invitación", error.message || "No se pudo enviar la invitación",
+      )
     },
   })
 

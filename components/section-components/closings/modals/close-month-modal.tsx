@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, AlertTriangle, CheckCircle2, Banknote, Bitcoin, DollarSign } from "lucide-react"
 import { createMonthlyClosing } from "@/lib/actions/closings"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import type { MonthlyClosingPreview } from "@/types/database"
 
 interface CloseMonthModalProps {
@@ -38,7 +38,7 @@ export function CloseMonthModal({ open, onOpenChange, preview }: CloseMonthModal
       return createMonthlyClosing(preview.period, resetFunds, notes)
     },
     onSuccess: () => {
-      toast.success("Mes cerrado exitosamente")
+      showToast.success("Mes cerrado exitosamente")
       queryClient.invalidateQueries({ queryKey: ["monthly-closings"] })
       queryClient.invalidateQueries({ queryKey: ["current-month-preview"] })
       queryClient.invalidateQueries({ queryKey: ["funds"] })
@@ -48,7 +48,7 @@ export function CloseMonthModal({ open, onOpenChange, preview }: CloseMonthModal
       setResetFunds(true)
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Error al cerrar el mes")
+      showToast.error(error instanceof Error ? error.message : "Error al cerrar el mes")
     },
   })
 

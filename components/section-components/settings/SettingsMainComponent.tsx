@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -69,10 +69,10 @@ export default function SettingsMainComponent() {
     mutationFn: (data: GymInfoForm) => updateGymSettings(settings?.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gym-settings"] })
-      toast.success("Configuración guardada", { description: "Los datos del gimnasio han sido actualizados." })
+      showToast.success("Configuración guardada", "Los datos del gimnasio han sido actualizados." )
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo guardar la configuración." })
+      showToast.error("Error", "No se pudo guardar la configuración." )
     },
   })
 
@@ -81,10 +81,10 @@ export default function SettingsMainComponent() {
       updateGymSchedule(id, { open_time, close_time }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gym-schedule"] })
-      toast.success("Horario actualizado", { description: "El horario ha sido guardado." })
+      showToast.success("Horario actualizado", "El horario ha sido guardado." )
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo actualizar el horario." })
+      showToast.error("Error", "No se pudo actualizar el horario." )
     },
   })
 
@@ -95,21 +95,21 @@ export default function SettingsMainComponent() {
   const updatePasswordMutation = useMutation({
     mutationFn: (newPassword: string) => updatePassword(newPassword),
     onSuccess: () => {
-      toast.success("Contraseña actualizada", { description: "Tu contraseña ha sido cambiada exitosamente." })
+      showToast.success("Contraseña actualizada", "Tu contraseña ha sido cambiada exitosamente." )
       resetPassword()
     },
     onError: (error: Error) => {
-      toast.error("Error", { description: error.message || "No se pudo actualizar la contraseña." })
+      showToast.error("Error", error.message || "No se pudo actualizar la contraseña." )
     },
   })
 
   const onSubmitPassword = (data: PasswordForm) => {
     if (data.newPassword !== data.confirmPassword) {
-      toast.error("Error", { description: "Las contraseñas no coinciden." })
+      showToast.error("Error", "Las contraseñas no coinciden." )
       return
     }
     if (data.newPassword.length < 6) {
-      toast.error("Error", { description: "La contraseña debe tener al menos 6 caracteres." })
+      showToast.error("Error", "La contraseña debe tener al menos 6 caracteres." )
       return
     }
     updatePasswordMutation.mutate(data.newPassword)

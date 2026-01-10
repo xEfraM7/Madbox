@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { Toaster } from "sonner"
 import { QueryProvider } from "@/components/providers/query-provider"
 import "./globals.css"
 
@@ -43,7 +42,6 @@ export default function RootLayout({
         <QueryProvider>
           {children}
         </QueryProvider>
-        <Toaster position="bottom-right" richColors closeButton />
         <Analytics />
       </body>
     </html>

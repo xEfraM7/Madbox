@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { showToast } from "@/lib/sweetalert"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,12 +31,12 @@ export default function PlansMainComponent() {
     mutationFn: (id: string) => deletePlan(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plans"] })
-      toast.success("Plan eliminado", { description: `${planToAction?.name} ha sido eliminado correctamente.` })
+      showToast.success("Plan eliminado", `${planToAction?.name} ha sido eliminado correctamente.`)
       setDeleteDialogOpen(false)
       setPlanToAction(null)
     },
     onError: () => {
-      toast.error("Error al eliminar", { description: "No se pudo eliminar el plan. Puede que tenga miembros asociados." })
+      showToast.error("Error al eliminar", "No se pudo eliminar el plan. Puede que tenga miembros asociados.")
     },
   })
 
@@ -45,12 +45,12 @@ export default function PlansMainComponent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plans"] })
       const action = planToAction?.active ? "desactivado" : "activado"
-      toast.success(`Plan ${action}`, { description: `${planToAction?.name} ha sido ${action}.` })
+      showToast.success(`Plan ${action}`, `${planToAction?.name} ha sido ${action}.`)
       setToggleDialogOpen(false)
       setPlanToAction(null)
     },
     onError: () => {
-      toast.error("Error", { description: "No se pudo cambiar el estado del plan." })
+      showToast.error("Error", "No se pudo cambiar el estado del plan.")
     },
   })
 
@@ -186,7 +186,7 @@ export default function PlansMainComponent() {
         open={toggleDialogOpen}
         onOpenChange={setToggleDialogOpen}
         title={planToAction?.active ? "Desactivar plan" : "Activar plan"}
-        description={planToAction?.active 
+        description={planToAction?.active
           ? `¿Deseas desactivar "${planToAction?.name}"? Los clientes no podrán seleccionar este plan.`
           : `¿Deseas activar "${planToAction?.name}"? El plan estará disponible para nuevos clientes.`
         }
