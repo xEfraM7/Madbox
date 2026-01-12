@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -39,6 +39,79 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [selectedRateType, setSelectedRateType] = useState<"BCV" | "USDT" | "CUSTOM" | null>(null)
   const pathname = usePathname()
   const { hasAnyPermission, isAdmin } = usePermissions()
+
+  // Touch handling for swipe-to-close (sidebar)
+  const touchStartY = useRef<number | null>(null)
+  const touchCurrentY = useRef<number | null>(null)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Touch handling for swipe-to-open (main content)
+  const touchStartX = useRef<number | null>(null)
+  const touchCurrentX = useRef<number | null>(null)
+  const touchStartFromEdge = useRef<boolean>(false)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
+    setIsDragging(true)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchCurrentY.current = e.touches[0].clientY
+    if (touchStartY.current !== null && touchCurrentY.current !== null) {
+      const deltaY = touchCurrentY.current - touchStartY.current
+      // Only allow dragging down (positive deltaY)
+      if (deltaY > 0) {
+        setDragOffset(deltaY)
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (touchStartY.current !== null && touchCurrentY.current !== null) {
+      const deltaY = touchCurrentY.current - touchStartY.current
+      // If swiped down more than 100px, close the sidebar
+      if (deltaY > 100) {
+        setSidebarOpen(false)
+      }
+    }
+    // Reset drag state
+    touchStartY.current = null
+    touchCurrentY.current = null
+    setDragOffset(0)
+    setIsDragging(false)
+  }
+
+  // Swipe right from left edge to open sidebar
+  const handleMainTouchStart = (e: React.TouchEvent) => {
+    const touchX = e.touches[0].clientX
+    // Only track if touch started within 30px of left edge
+    if (touchX < 30) {
+      touchStartX.current = touchX
+      touchStartFromEdge.current = true
+    } else {
+      touchStartFromEdge.current = false
+    }
+  }
+
+  const handleMainTouchMove = (e: React.TouchEvent) => {
+    if (touchStartFromEdge.current) {
+      touchCurrentX.current = e.touches[0].clientX
+    }
+  }
+
+  const handleMainTouchEnd = () => {
+    if (touchStartFromEdge.current && touchStartX.current !== null && touchCurrentX.current !== null) {
+      const deltaX = touchCurrentX.current - touchStartX.current
+      // If swiped right more than 50px from left edge, open sidebar
+      if (deltaX > 50 && !sidebarOpen) {
+        setSidebarOpen(true)
+      }
+    }
+    touchStartX.current = null
+    touchCurrentX.current = null
+    touchStartFromEdge.current = false
+  }
 
   const { data: gymSettings } = useQuery({
     queryKey: ["gym-settings"],
@@ -84,15 +157,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className={cn("fixed inset-0 z-50 bg-background/80 backdrop-blur-sm lg:hidden", sidebarOpen ? "block" : "hidden")} onClick={() => setSidebarOpen(false)} />
 
       {/* Mobile Sidebar - Bottom Sheet Style */}
-      <aside className={cn(
-        "fixed z-50 bg-sidebar border-sidebar-border transform transition-transform duration-300 ease-in-out",
-        // Mobile: bottom sheet
-        "lg:hidden inset-x-0 bottom-0 h-[85vh] rounded-t-2xl border-t",
-        sidebarOpen ? "translate-y-0" : "translate-y-full"
-      )}>
+      <aside
+        className={cn(
+          "fixed z-50 bg-sidebar border-sidebar-border transform",
+          // Only apply transition when not dragging (for spring-back effect)
+          !isDragging && "transition-transform duration-300 ease-in-out",
+          // Mobile: bottom sheet
+          "lg:hidden inset-x-0 bottom-0 h-[85vh] rounded-t-2xl border-t",
+          !isDragging && (sidebarOpen ? "translate-y-0" : "translate-y-full")
+        )}
+        style={isDragging ? { transform: `translateY(${dragOffset}px)` } : undefined}
+      >
         <div className="flex h-full flex-col">
-          {/* Handle bar for mobile */}
-          <div className="flex justify-center py-3">
+          {/* Handle bar for mobile - swipe down to close */}
+          <div
+            className="flex justify-center py-3 cursor-grab active:cursor-grabbing touch-pan-y"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <div className="w-12 h-1.5 rounded-full bg-sidebar-foreground/20" />
           </div>
 
@@ -206,7 +289,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div
+        className="flex-1 flex flex-col overflow-hidden"
+        onTouchStart={handleMainTouchStart}
+        onTouchMove={handleMainTouchMove}
+        onTouchEnd={handleMainTouchEnd}
+      >
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 lg:px-6 shrink-0">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
