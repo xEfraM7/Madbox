@@ -25,9 +25,10 @@ interface CloseMonthModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   preview?: MonthlyClosingPreview
+  period?: string // Optional: if provided, closing a specific past month
 }
 
-export function CloseMonthModal({ open, onOpenChange, preview }: CloseMonthModalProps) {
+export function CloseMonthModal({ open, onOpenChange, preview, period }: CloseMonthModalProps) {
   const [resetFunds, setResetFunds] = useState(true)
   const [notes, setNotes] = useState("")
   const queryClient = useQueryClient()
@@ -60,8 +61,8 @@ export function CloseMonthModal({ open, onOpenChange, preview }: CloseMonthModal
 
   const formatPeriod = (period: string) => {
     const [year, month] = period.split("-")
-    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     return `${months[parseInt(month) - 1]} ${year}`
   }
 
@@ -69,9 +70,17 @@ export function CloseMonthModal({ open, onOpenChange, preview }: CloseMonthModal
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Cerrar Mes: {formatPeriod(preview.period)}</DialogTitle>
+          <DialogTitle className="text-2xl">
+            {period
+              ? `Cerrar Mes: ${formatPeriod(period)}`
+              : `Cerrar Mes: ${formatPeriod(preview.period)}`
+            }
+          </DialogTitle>
           <DialogDescription>
-            Revisa los datos antes de confirmar el cierre. Esta acción es irreversible.
+            {period
+              ? "Este es un mes anterior pendiente por cerrar. Revisa los datos antes de confirmar."
+              : "Revisa los datos antes de confirmar el cierre. Esta acción es irreversible."
+            }
           </DialogDescription>
         </DialogHeader>
 

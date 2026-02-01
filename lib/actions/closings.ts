@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
-import type { MonthlyClosing, MonthlyClosingPreview } from "@/types/database"
+import type { MonthlyClosing, MonthlyClosingPreview, PendingPeriod } from "@/types/database"
 import { logActivity } from "./activity"
 
 /**
@@ -11,14 +11,14 @@ import { logActivity } from "./activity"
  */
 export async function getMonthlyClosings(): Promise<MonthlyClosing[]> {
   const supabase = await createClient()
-  
+
   const { data, error } = await supabase
     .from("monthly_closings")
     .select("*, admin:admins(name)")
     .order("period", { ascending: false })
 
   if (error) throw error
-  
+
   return (data || []).map(row => ({
     id: row.id,
     period: row.period,
@@ -58,7 +58,7 @@ export async function getMonthlyClosings(): Promise<MonthlyClosing[]> {
  */
 export async function getMonthlyClosing(id: string): Promise<MonthlyClosing | null> {
   const supabase = await createClient()
-  
+
   const { data, error } = await supabase
     .from("monthly_closings")
     .select("*, admin:admins(name)")
@@ -69,7 +69,7 @@ export async function getMonthlyClosing(id: string): Promise<MonthlyClosing | nu
     if (error.code === "PGRST116") return null // Not found
     throw error
   }
-  
+
   if (!data) return null
 
   return {
@@ -105,22 +105,36 @@ export async function getMonthlyClosing(id: string): Promise<MonthlyClosing | nu
   }
 }
 
-
 /**
- * Get preview of current month data (without closing)
+ * Get preview of month data (without closing)
+ * If period is provided, calculates for that specific month
+ * Otherwise uses current month
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
  */
-export async function getCurrentMonthPreview(): Promise<MonthlyClosingPreview> {
+export async function getCurrentMonthPreview(period?: string): Promise<MonthlyClosingPreview> {
   const supabase = await createClient()
-  
-  // Get current period (YYYY-MM format)
-  const now = new Date()
-  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-  
-  // Calculate date range for current month
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-  
+
+  // Use provided period or current month
+  let targetPeriod: string
+  let year: number
+  let month: number
+
+  if (period && /^\d{4}-\d{2}$/.test(period)) {
+    targetPeriod = period
+    const [y, m] = period.split("-").map(Number)
+    year = y
+    month = m
+  } else {
+    const now = new Date()
+    year = now.getFullYear()
+    month = now.getMonth() + 1
+    targetPeriod = `${year}-${String(month).padStart(2, "0")}`
+  }
+
+  // Calculate date range for the target month
+  const startOfMonth = new Date(year, month - 1, 1)
+  const endOfMonth = new Date(year, month, 0, 23, 59, 59)
+
   const startDate = startOfMonth.toISOString()
   const endDate = endOfMonth.toISOString()
 
@@ -140,7 +154,7 @@ export async function getCurrentMonthPreview(): Promise<MonthlyClosingPreview> {
       .eq("status", "paid")
       .gte("payment_date", startDate)
       .lte("payment_date", endDate),
-    
+
     // Class payments for the period
     supabase
       .from("special_class_payments")
@@ -148,22 +162,22 @@ export async function getCurrentMonthPreview(): Promise<MonthlyClosingPreview> {
       .eq("status", "paid")
       .gte("payment_date", startDate)
       .lte("payment_date", endDate),
-    
+
     // All members for metrics
     supabase
       .from("members")
       .select("status, frozen"),
-    
+
     // Current fund balances
     supabase
       .from("funds")
       .select("type, balance"),
-    
+
     // Exchange rates
     supabase
       .from("exchange_rates")
       .select("type, rate"),
-    
+
     // New members this month
     supabase
       .from("members")
@@ -208,7 +222,7 @@ export async function getCurrentMonthPreview(): Promise<MonthlyClosingPreview> {
   const totalRevenueUsd = (totalBs / rateBcv) + totalUsdCash + totalUsdt
 
   return {
-    period,
+    period: targetPeriod,
     membership_revenue: {
       bs: membershipRevenue.bs,
       usd_cash: membershipRevenue.usd_cash,
@@ -269,6 +283,92 @@ function calculateRevenueByMethod(payments: { amount: number; method: string | n
   return { bs, usd_cash, usdt }
 }
 
+/**
+ * Helper to format period label
+ */
+function formatPeriodLabel(period: string): string {
+  const [year, month] = period.split("-")
+  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+  return `${months[parseInt(month) - 1]} ${year}`
+}
+
+/**
+ * Get list of pending periods (months without closings)
+ * Finds months between first payment and last month that haven't been closed
+ */
+export async function getPendingPeriods(): Promise<PendingPeriod[]> {
+  const supabase = await createClient()
+
+  // Get the earliest payment date to determine where to start
+  const { data: earliestPayment } = await supabase
+    .from("payments")
+    .select("payment_date")
+    .not("payment_date", "is", null)
+    .order("payment_date", { ascending: true })
+    .limit(1)
+    .single()
+
+  if (!earliestPayment?.payment_date) {
+    return [] // No payments yet, no pending periods
+  }
+
+  // Get all existing closings
+  const { data: closings } = await supabase
+    .from("monthly_closings")
+    .select("period")
+
+  const closedPeriods = new Set((closings || []).map(c => c.period))
+
+  // Parse the earliest payment date - handle as YYYY-MM-DD string to avoid timezone issues
+  const paymentDateStr = earliestPayment.payment_date.split('T')[0] // Get just the date part
+  const [paymentYear, paymentMonth] = paymentDateStr.split('-').map(Number)
+
+  // Get current date
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1 // 1-indexed
+
+  // Last month to check
+  let lastMonthYear = currentYear
+  let lastMonthMonth = currentMonth - 1
+  if (lastMonthMonth === 0) {
+    lastMonthMonth = 12
+    lastMonthYear = currentYear - 1
+  }
+
+  // Don't show pending if first payment is in current month or later
+  if (paymentYear > currentYear || (paymentYear === currentYear && paymentMonth >= currentMonth)) {
+    return []
+  }
+
+  const pendingPeriods: PendingPeriod[] = []
+  let iterYear = paymentYear
+  let iterMonth = paymentMonth
+
+  // Iterate from first payment month to last month
+  while (iterYear < lastMonthYear || (iterYear === lastMonthYear && iterMonth <= lastMonthMonth)) {
+    const period = `${iterYear}-${String(iterMonth).padStart(2, "0")}`
+
+    if (!closedPeriods.has(period)) {
+      pendingPeriods.push({
+        period,
+        label: formatPeriodLabel(period),
+        isOldest: pendingPeriods.length === 0
+      })
+    }
+
+    // Move to next month
+    iterMonth++
+    if (iterMonth > 12) {
+      iterMonth = 1
+      iterYear++
+    }
+  }
+
+  return pendingPeriods
+}
+
 
 /**
  * Create a new monthly closing
@@ -301,7 +401,7 @@ export async function createMonthlyClosing(
   const [year, month] = period.split("-").map(Number)
   const startOfMonth = new Date(year, month - 1, 1)
   const endOfMonth = new Date(year, month, 0, 23, 59, 59)
-  
+
   const startDate = startOfMonth.toISOString()
   const endDate = endOfMonth.toISOString()
 
@@ -322,7 +422,7 @@ export async function createMonthlyClosing(
       .eq("status", "paid")
       .gte("payment_date", startDate)
       .lte("payment_date", endDate),
-    
+
     // Class payments for the period (Requirement 1.2)
     supabase
       .from("special_class_payments")
@@ -330,29 +430,29 @@ export async function createMonthlyClosing(
       .eq("status", "paid")
       .gte("payment_date", startDate)
       .lte("payment_date", endDate),
-    
+
     // All members for metrics (Requirements 2.1, 2.2, 2.3, 2.4)
     supabase
       .from("members")
       .select("status, frozen"),
-    
+
     // Current fund balances (Requirement 3.1)
     supabase
       .from("funds")
       .select("type, balance"),
-    
+
     // Exchange rates (Requirement 1.4)
     supabase
       .from("exchange_rates")
       .select("type, rate"),
-    
+
     // New members this month (Requirement 2.2)
     supabase
       .from("members")
       .select("id")
       .gte("created_at", startDate)
       .lte("created_at", endDate),
-    
+
     // Get current user for closed_by
     supabase.auth.getUser()
   ])
@@ -372,7 +472,7 @@ export async function createMonthlyClosing(
   const expiredMembers = members.filter(m => m.status === "expired").length
   const frozenMembers = members.filter(m => m.frozen === true).length
   const newMembers = newMembersResult.data?.length || 0
-  
+
   // Calculate retention rate (Requirement 2.5)
   const retentionRate = totalMembers > 0 ? (activeMembers / totalMembers) * 100 : 0
 
@@ -516,7 +616,7 @@ export async function createMonthlyClosing(
  */
 export async function exportMonthlyClosing(id: string): Promise<string> {
   const closing = await getMonthlyClosing(id)
-  
+
   if (!closing) {
     throw new Error("Cierre no encontrado")
   }

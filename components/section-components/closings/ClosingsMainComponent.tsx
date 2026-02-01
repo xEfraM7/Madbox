@@ -8,12 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { 
-  Calendar, 
-  Lock, 
-  DollarSign, 
-  Users, 
-  TrendingUp, 
+import {
+  Calendar,
+  Lock,
+  DollarSign,
+  Users,
+  TrendingUp,
   TrendingDown,
   Loader2,
   Banknote,
@@ -21,9 +21,10 @@ import {
   Eye
 } from "lucide-react"
 import { usePermissions } from "@/lib/hooks/use-permissions"
-import { getMonthlyClosings, getCurrentMonthPreview } from "@/lib/actions/closings"
+import { getMonthlyClosings, getCurrentMonthPreview, getPendingPeriods } from "@/lib/actions/closings"
 import { CloseMonthModal } from "./modals/close-month-modal"
 import { ClosingDetailModal } from "./modals/closing-detail-modal"
+import { PendingClosingsBanner } from "./pending-closings-banner"
 import type { MonthlyClosing } from "@/types/database"
 
 export default function ClosingsMainComponent() {
@@ -33,15 +34,21 @@ export default function ClosingsMainComponent() {
   const [selectedClosing, setSelectedClosing] = useState<MonthlyClosing | null>(null)
   const [compareClosingId, setCompareClosingId] = useState<string | null>(null)
   const [isClient, setIsClient] = useState(false)
+  const [selectedPeriod, setSelectedPeriod] = useState<string | undefined>(undefined)
 
   const { data: closings = [], isLoading: closingsLoading } = useQuery({
     queryKey: ["monthly-closings"],
     queryFn: getMonthlyClosings,
   })
 
-  const { data: preview, isLoading: previewLoading } = useQuery({
-    queryKey: ["current-month-preview"],
-    queryFn: getCurrentMonthPreview,
+  const { data: preview, isLoading: previewLoading, refetch: refetchPreview } = useQuery({
+    queryKey: ["current-month-preview", selectedPeriod],
+    queryFn: () => getCurrentMonthPreview(selectedPeriod),
+  })
+
+  const { data: pendingPeriods = [] } = useQuery({
+    queryKey: ["pending-periods"],
+    queryFn: getPendingPeriods,
   })
 
   useEffect(() => {
@@ -52,8 +59,8 @@ export default function ClosingsMainComponent() {
 
   const formatPeriod = (period: string) => {
     const [year, month] = period.split("-")
-    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     return `${months[parseInt(month) - 1]} ${year}`
   }
 
@@ -64,9 +71,9 @@ export default function ClosingsMainComponent() {
 
   const formatDate = (date: string) => {
     if (!isClient) return ""
-    return new Date(date).toLocaleDateString("es-VE", { 
-      day: "2-digit", 
-      month: "2-digit", 
+    return new Date(date).toLocaleDateString("es-VE", {
+      day: "2-digit",
+      month: "2-digit",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit"
@@ -87,6 +94,18 @@ export default function ClosingsMainComponent() {
     setDetailModalOpen(true)
   }
 
+  const handleClosePendingPeriod = (period: string) => {
+    setSelectedPeriod(period)
+    setCloseModalOpen(true)
+  }
+
+  const handleCloseModalChange = (open: boolean) => {
+    setCloseModalOpen(open)
+    if (!open) {
+      setSelectedPeriod(undefined) // Reset to current month when closing
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-4 md:space-y-6">
@@ -97,15 +116,26 @@ export default function ClosingsMainComponent() {
             <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">Gestiona los cierres de período y revisa el historial</p>
           </div>
           {canEdit && (
-            <Button 
-              onClick={() => setCloseModalOpen(true)}
+            <Button
+              onClick={() => {
+                setSelectedPeriod(undefined)
+                setCloseModalOpen(true)
+              }}
               className="w-full md:w-auto"
             >
               <Lock className="mr-2 h-4 w-4" />
-              Cerrar Mes
+              Cerrar Mes Actual
             </Button>
           )}
         </div>
+
+        {/* Pending Closings Banner */}
+        {canEdit && pendingPeriods.length > 0 && (
+          <PendingClosingsBanner
+            pendingPeriods={pendingPeriods}
+            onClosePeriod={handleClosePendingPeriod}
+          />
+        )}
 
         {/* Current Month Preview Card */}
         <Card className="border-primary/20 bg-primary/5">
@@ -281,10 +311,11 @@ export default function ClosingsMainComponent() {
         </Card>
       </div>
 
-      <CloseMonthModal 
-        open={closeModalOpen} 
-        onOpenChange={setCloseModalOpen}
+      <CloseMonthModal
+        open={closeModalOpen}
+        onOpenChange={handleCloseModalChange}
         preview={preview}
+        period={selectedPeriod}
       />
 
       <ClosingDetailModal
@@ -297,12 +328,12 @@ export default function ClosingsMainComponent() {
 }
 
 // Comparison Card Component
-function ComparisonCard({ 
-  label, 
-  current, 
-  previous, 
-  format 
-}: { 
+function ComparisonCard({
+  label,
+  current,
+  previous,
+  format
+}: {
   label: string
   current: number
   previous: number

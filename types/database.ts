@@ -494,22 +494,22 @@ export type TablesUpdate<T extends keyof Database["public"]["Tables"]> = Databas
 export interface MonthlyClosing {
   id: string
   period: string
-  
+
   // Ingresos membresías
   membership_revenue_bs: number
   membership_revenue_usd_cash: number
   membership_revenue_usdt: number
   membership_payments_count: number
-  
+
   // Ingresos clases
   class_revenue_bs: number
   class_revenue_usd_cash: number
   class_revenue_usdt: number
   class_payments_count: number
-  
+
   // Total USD
   total_revenue_usd: number
-  
+
   // Métricas miembros
   active_members: number
   new_members: number
@@ -517,24 +517,24 @@ export interface MonthlyClosing {
   frozen_members: number
   total_members: number
   retention_rate: number
-  
+
   // Fondos
   funds_bs: number
   funds_usd_cash: number
   funds_usdt: number
   funds_reset: boolean
-  
+
   // Tasas
   rate_bcv: number
   rate_usdt: number
   rate_custom: number
-  
+
   // Metadata
   closed_by: string | null
   closed_at: string
   notes: string | null
   created_at: string
-  
+
   // Relaciones
   admin?: { name: string }
 }
@@ -548,3 +548,10 @@ export interface MonthlyClosingPreview {
   funds: { bs: number; usd_cash: number; usdt: number }
   rates: { bcv: number; usdt: number; custom: number }
 }
+
+export interface PendingPeriod {
+  period: string      // "2026-01"
+  label: string       // "Enero 2026"
+  isOldest: boolean   // To highlight the oldest one
+}
+
