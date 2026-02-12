@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { usePermissions } from "@/lib/hooks/use-permissions"
 import { ExchangeRateModal } from "./exchange-rate-modal"
+import { ExchangeRateUpdater } from "./exchange-rate-updater"
 
 import { Home, Users, Shield, CreditCard, DollarSign, Calendar, CalendarCheck, Settings, LogOut, Menu, X, ChevronDown } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -365,6 +366,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         type={selectedRateType}
         currentRate={selectedRateType === "BCV" ? bcvRate : selectedRateType === "USDT" ? usdtRate : customRate}
       />
+
+      {/* Componente para actualización automática de tasas (Lazy Update) */}
+      <ExchangeRateUpdater />
     </div>
   )
 }

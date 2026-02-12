@@ -43,30 +43,30 @@ const METHODS_IN_BS = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
  */
 function calculateDueDate(paymentDate: string, memberPaymentDate?: string): string {
   const paymentDateObj = new Date(paymentDate + "T00:00:00")
-  
+
   // Determinar el día de corte: usar el del miembro si existe, sino usar el del pago
   let cutoffDay = paymentDateObj.getDate()
-  
+
   if (memberPaymentDate) {
     const memberDate = new Date(memberPaymentDate + "T00:00:00")
     cutoffDay = memberDate.getDate()
   }
-  
+
   // Crear la fecha de vencimiento en el próximo mes con el mismo día de corte
   const dueDate = new Date(paymentDateObj.getFullYear(), paymentDateObj.getMonth() + 1, cutoffDay)
-  
+
   // Ajustar si el día no existe en el mes siguiente (ej: 31 -> 28 feb)
   if (dueDate.getDate() !== cutoffDay) {
     dueDate.setDate(0) // Último día del mes anterior
   }
-  
+
   return dueDate.toISOString().split("T")[0]
 }
 
 export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormModalProps) {
   const queryClient = useQueryClient()
   const initialized = useRef(false)
-  
+
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: { member_id: "", plan_id: "", amount: "", method: "Efectivo", reference: "", payment_date: "", due_date: "", payment_rate: "" }
   })
@@ -109,22 +109,22 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       } else if (payment?.member_id) {
         const selectedMember = members.find((m: any) => m.id === payment.member_id)
         const memberPlan = plans.find((p: any) => p.id === payment.plan_id)
-        reset({ 
-          member_id: payment.member_id, 
-          plan_id: payment.plan_id || "", 
-          amount: memberPlan?.price?.toString() || "", 
-          method: "Efectivo", 
+        reset({
+          member_id: payment.member_id,
+          plan_id: payment.plan_id || "",
+          amount: memberPlan?.price?.toString() || "",
+          method: "Efectivo",
           reference: "",
           payment_date: today,
           due_date: calculateDueDate(today, selectedMember?.payment_date),
           payment_rate: ""
         })
       } else {
-        reset({ 
-          member_id: "", 
-          plan_id: "", 
-          amount: "", 
-          method: "Efectivo", 
+        reset({
+          member_id: "",
+          plan_id: "",
+          amount: "",
+          method: "Efectivo",
           reference: "",
           payment_date: today,
           due_date: calculateDueDate(today),
@@ -168,11 +168,11 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["members"] })
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] })
-      showToast.success("Pago registrado", "El pago ha sido registrado correctamente." )
+      showToast.success("Pago registrado", "El pago ha sido registrado correctamente.")
       onOpenChange(false)
     },
     onError: () => {
-      showToast.error("Error", "No se pudo registrar el pago." )
+      showToast.error("Error", "No se pudo registrar el pago.")
     },
   })
 
@@ -182,11 +182,11 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       queryClient.invalidateQueries({ queryKey: ["payments"] })
       queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
       queryClient.invalidateQueries({ queryKey: ["members"] })
-      showToast.success("Pago actualizado", "Los cambios han sido guardados." )
+      showToast.success("Pago actualizado", "Los cambios han sido guardados.")
       onOpenChange(false)
     },
     onError: () => {
-      showToast.error("Error", "No se pudo actualizar el pago." )
+      showToast.error("Error", "No se pudo actualizar el pago.")
     },
   })
 
@@ -245,12 +245,12 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="amount">Monto</Label>
-                <Input 
-                  id="amount" 
-                  type="number" 
-                  step="0.01" 
-                  {...register("amount", { required: "El monto es requerido" })} 
-                  placeholder="0.00" 
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  {...register("amount", { required: "El monto es requerido" })}
+                  placeholder="0.00"
                 />
                 {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
               </div>
@@ -265,6 +265,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
                     <SelectItem value="Transferencia">Transferencia</SelectItem>
                     <SelectItem value="Transferencia BS">Transferencia BS</SelectItem>
                     <SelectItem value="USDT">USDT</SelectItem>
+                    <SelectItem value="Solvencia sin ingreso">Solvencia sin ingreso</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -273,10 +274,10 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
             {METHODS_WITH_REFERENCE.includes(method) && (
               <div className="grid gap-2">
                 <Label htmlFor="reference">Referencia</Label>
-                <Input 
-                  id="reference" 
-                  {...register("reference")} 
-                  placeholder="Número de referencia o hash" 
+                <Input
+                  id="reference"
+                  {...register("reference")}
+                  placeholder="Número de referencia o hash"
                 />
               </div>
             )}
@@ -284,12 +285,12 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
             {METHODS_IN_BS.includes(method) && (
               <div className="grid gap-2">
                 <Label htmlFor="payment_rate">Tasa del pago (opcional)</Label>
-                <Input 
-                  id="payment_rate" 
+                <Input
+                  id="payment_rate"
                   type="number"
                   step="0.01"
-                  {...register("payment_rate")} 
-                  placeholder="Ej: 45.50" 
+                  {...register("payment_rate")}
+                  placeholder="Ej: 45.50"
                 />
                 <p className="text-xs text-muted-foreground">Tasa Bs/USD al momento del pago</p>
               </div>
@@ -298,8 +299,8 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="payment_date">Fecha de pago</Label>
-                <DateInput 
-                  value={watch("payment_date")} 
+                <DateInput
+                  value={watch("payment_date")}
                   onChange={(value) => {
                     setValue("payment_date", value)
                     if (value && !isEditing) {

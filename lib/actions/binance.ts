@@ -195,3 +195,70 @@ export async function syncUSDTRate(): Promise<{
 // Mantener compatibilidad con el nombre anterior
 export const syncBinanceUSDTRate = syncUSDTRate
 
+/**
+ * Verifica si las tasas necesitan actualización (más de 1 hora) y las sincroniza si es necesario.
+ * Esta función está diseñada para ser llamada desde un componente cliente "perezoso".
+ */
+export async function checkAndSyncRates(): Promise<{
+  updated: boolean
+  bcvResult?: { success: boolean; rate: number; error?: string }
+  usdtResult?: { success: boolean; rate: number; error?: string }
+}> {
+  try {
+    const supabase = await createClient()
+
+    // 1. Obtener tasas actuales
+    const { data: rates, error } = await supabase
+      .from("exchange_rates")
+      .select("*")
+      .in("type", ["BCV", "USDT"])
+
+    if (error) {
+      console.error("Error al verificar tasas:", error)
+      return { updated: false }
+    }
+
+    if (!rates || rates.length === 0) {
+      return { updated: false }
+    }
+
+    // 2. Verificar antigüedad (1 hora = 3600000 ms)
+    const ONE_HOUR_MS = 3600 * 1000
+    const now = new Date().getTime()
+
+    let needsUpdate = false
+
+    // Verificar si alguna tasa tiene más de 1 hora de antigüedad
+    for (const rate of rates) {
+      const updatedAt = new Date(rate.updated_at).getTime()
+      if (now - updatedAt > ONE_HOUR_MS) {
+        needsUpdate = true
+        break
+      }
+    }
+
+    if (!needsUpdate) {
+      return { updated: false }
+    }
+
+    // 3. Sincronizar si es necesario
+    console.log("Tasas desactualizadas. Iniciando sincronización automática...")
+
+    // Ejecutar en paralelo
+    const [bcvResult, usdtResult] = await Promise.all([
+      syncBCVRate(),
+      syncUSDTRate()
+    ])
+
+    return {
+      updated: true,
+      bcvResult,
+      usdtResult
+    }
+
+  } catch (error) {
+    console.error("Error en checkAndSyncRates:", error)
+    return { updated: false }
+  }
+}
+
