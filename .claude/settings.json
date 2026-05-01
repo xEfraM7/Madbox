@@ -20,7 +20,8 @@
       "Bash(mv .tmp-migration/20260501150444_portal_members_setup.sql supabase/migrations/)",
       "Bash(rmdir .tmp-migration)",
       "Bash(sed -n '/^\\\\/\\\\/ Monthly Closing types/,$p')",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "PowerShell(Copy-Item \"d:\\\\Proyectos\\\\Madbox\\\\public\\\\Madbox_logo.jpeg\" \"d:\\\\Proyectos\\\\Madbox\\\\app\\\\icon.jpg\" -Force)"
     ]
   }
 }
