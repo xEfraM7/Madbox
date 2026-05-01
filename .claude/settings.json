@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx skills *)",
+      "PowerShell(npx skills find superpowers)",
+      "PowerShell(npx skills add obra/superpowers@brainstorming obra/superpowers@using-superpowers obra/superpowers@systematic-debugging obra/superpowers@writing-plans obra/superpowers@test-driven-development obra/superpowers@requesting-code-review -g -y)",
+      "PowerShell(npx skills add obra/superpowers@using-superpowers -g -y)",
+      "PowerShell(npx skills add obra/superpowers@systematic-debugging -g -y)",
+      "PowerShell(npx skills add obra/superpowers@writing-plans -g -y)",
+      "PowerShell(npx skills add obra/superpowers@test-driven-development -g -y)",
+      "PowerShell(npx skills add obra/superpowers@requesting-code-review -g -y)",
+      "Bash(dir d:\\\\Proyectos\\\\Madbox /B)",
+      "PowerShell(New-Item -ItemType Directory -Path \"d:\\\\Proyectos\\\\Madbox\\\\docs\\\\superpowers\\\\specs\" -Force)",
+      "PowerShell(New-Item -ItemType Directory -Path \"d:\\\\Proyectos\\\\Madbox\\\\docs\\\\superpowers\\\\plans\" -Force)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx supabase *)",
+      "Bash(mkdir -p .tmp-migration)",
+      "Bash(mv supabase/migrations/20260501150444_portal_members_setup.sql .tmp-migration/)",
+      "Bash(mv .tmp-migration/20260501150444_portal_members_setup.sql supabase/migrations/)",
+      "Bash(rmdir .tmp-migration)",
+      "Bash(sed -n '/^\\\\/\\\\/ Monthly Closing types/,$p')",
+      "Read(//tmp/**)"
+    ]
+  }
+}

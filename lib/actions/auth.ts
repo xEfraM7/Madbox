@@ -6,16 +6,17 @@ import { redirect } from "next/navigation"
 export async function signIn(email: string, password: string) {
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) return { error: error.message }
 
-  if (error) {
-    return { error: error.message }
+  const { data: { user } } = await supabase.auth.getUser()
+  const role = user?.app_metadata?.role
+
+  if (role === "member") {
+    redirect("/portal")
+  } else {
+    redirect("/dashboard")
   }
-
-  redirect("/dashboard")
 }
 
 export async function signOut() {
@@ -47,16 +48,12 @@ export async function getAdmin() {
 
 export async function resetPassword(email: string) {
   const supabase = await createClient()
-  
+
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/confirm?next=/reset-password`,
   })
 
-  if (error) {
-    console.error("Reset password error:", error)
-    return { error: error.message }
-  }
-
+  if (error) return { error: error.message }
   return { success: true }
 }
 

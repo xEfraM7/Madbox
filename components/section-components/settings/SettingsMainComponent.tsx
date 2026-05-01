@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import Swal from "sweetalert2"
 import { showToast } from "@/lib/sweetalert"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
@@ -10,9 +11,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Save, Building2, Calendar, Loader2, KeyRound } from "lucide-react"
+import { Save, Building2, Calendar, Loader2, KeyRound, Users, AlertTriangle } from "lucide-react"
 import { getGymSettings, updateGymSettings, getGymSchedule, updateGymSchedule } from "@/lib/actions/settings"
 import { updatePassword } from "@/lib/actions/auth"
+import { migrateMembersToPortal, migrateAdminMetadata } from "@/lib/actions/migration"
 
 interface GymInfoForm {
   name: string
@@ -31,6 +33,36 @@ const dayOrder = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado
 
 export default function SettingsMainComponent() {
   const queryClient = useQueryClient()
+  const [migrating, setMigrating] = useState(false)
+  const [migrateResult, setMigrateResult] = useState<{
+    success: number; failed: number; errors: string[]
+  } | null>(null)
+
+  const handleMigration = async () => {
+    const confirm = await Swal.fire({
+      title: "¿Migrar miembros al portal?",
+      html: "Se creará una cuenta de acceso para cada miembro que aún no tenga una.<br/>Contraseña inicial: <b>Madbox2026</b>",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, migrar",
+      cancelButtonText: "Cancelar",
+      background: "#0a0a0a",
+      color: "#fff",
+    })
+    if (!confirm.isConfirmed) return
+
+    setMigrating(true)
+    try {
+      await migrateAdminMetadata()
+      const result = await migrateMembersToPortal()
+      setMigrateResult(result)
+      showToast.success("Migración completada", `${result.success} exitosos, ${result.failed} fallidos`)
+    } catch (err) {
+      showToast.error("Error en la migración", err instanceof Error ? err.message : "Error desconocido")
+    } finally {
+      setMigrating(false)
+    }
+  }
 
   const { data: settings, isLoading: loadingSettings } = useQuery({
     queryKey: ["gym-settings"],
@@ -149,6 +181,7 @@ export default function SettingsMainComponent() {
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="schedule">Horarios</TabsTrigger>
             <TabsTrigger value="account">Cuenta</TabsTrigger>
+            <TabsTrigger value="portal">Portal</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general">
@@ -282,6 +315,55 @@ export default function SettingsMainComponent() {
                     )}
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="portal" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle>Migración de miembros al portal</CardTitle>
+                    <CardDescription>
+                      Crea cuentas de acceso para todos los miembros registrados que aún no tienen una.
+                      La contraseña inicial será <strong>Madbox2026</strong>.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button
+                  onClick={handleMigration}
+                  disabled={migrating}
+                  className="gap-2"
+                >
+                  {migrating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Users className="h-4 w-4" />
+                  )}
+                  {migrating ? "Migrando..." : "Migrar miembros al portal"}
+                </Button>
+
+                {migrateResult && (
+                  <div className="rounded-lg border border-border p-4 space-y-2 text-sm">
+                    <p className="text-green-400 font-medium">✓ {migrateResult.success} cuentas creadas</p>
+                    {migrateResult.failed > 0 && (
+                      <>
+                        <p className="text-red-400 font-medium">✗ {migrateResult.failed} fallidos</p>
+                        <ul className="text-muted-foreground space-y-1 pl-2">
+                          {migrateResult.errors.map((e, i) => (
+                            <li key={i} className="flex items-start gap-1">
+                              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                              {e}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

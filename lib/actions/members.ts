@@ -1,9 +1,11 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server"
+import { createAdminClient } from "@/utils/supabase/admin"
 import { revalidatePath } from "next/cache"
 import type { TablesInsert, TablesUpdate } from "@/types/database"
 import { logActivity } from "./activity"
+import { DEFAULT_MEMBER_PASSWORD } from "@/lib/constants"
 
 export async function getMembers() {
   const supabase = await createClient()
@@ -64,6 +66,25 @@ export async function createMember(member: TablesInsert<"members">) {
 
   if (error) throw error
 
+  // Crear cuenta de auth para el nuevo miembro
+  const adminClient = createAdminClient()
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+    email: data.email,
+    password: DEFAULT_MEMBER_PASSWORD,
+    app_metadata: { role: "member" },
+    user_metadata: { must_change_password: true },
+    email_confirm: true,
+  })
+
+  if (!authError && authData.user) {
+    await adminClient
+      .from("members")
+      .update({ auth_user_id: authData.user.id })
+      .eq("id", data.id)
+  } else if (authError) {
+    console.warn(`No se pudo crear cuenta auth para ${data.email}: ${authError.message}`)
+  }
+
   await logActivity({
     action: "member_created",
     entityType: "member",
@@ -101,12 +122,18 @@ export async function updateMember(id: string, member: TablesUpdate<"members">) 
 
 export async function deleteMember(id: string) {
   const supabase = await createClient()
-  
+
   const { data: member } = await supabase
     .from("members")
-    .select("name")
+    .select("name, auth_user_id")
     .eq("id", id)
     .single()
+
+  // Eliminar cuenta de auth si existe
+  if (member?.auth_user_id) {
+    const adminClient = createAdminClient()
+    await adminClient.auth.admin.deleteUser(member.auth_user_id)
+  }
 
   const { error } = await supabase.from("members").delete().eq("id", id)
   if (error) throw error
