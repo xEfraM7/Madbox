@@ -9,6 +9,7 @@ import { getGymSchedule } from "@/lib/actions/settings"
 import { getRoutines, getRoutineAssignments } from "@/lib/actions/routines"
 import { getPlans } from "@/lib/actions/plans"
 import { RoutineLibraryModal } from "./modals/routine-library-modal"
+import { WeekGrid } from "./WeekGrid"
 
 export default function HorariosMainComponent() {
   const [libraryOpen, setLibraryOpen] = useState(false)
@@ -63,16 +64,29 @@ export default function HorariosMainComponent() {
           </Button>
         </div>
 
-        {/* WeekGrid se monta en Task 15 */}
-        <div className="text-sm text-muted-foreground border border-dashed rounded-lg p-8 text-center">
-          Schedule: {schedule.length} días · Planes activos: {activePlans.length} · Rutinas: {routines.length} · Asignaciones: {assignments.length}
-        </div>
+        {activePlans.length === 0 ? (
+          <div className="border border-dashed rounded-lg p-8 text-center space-y-2">
+            <p className="text-sm font-medium">No hay planes activos</p>
+            <p className="text-xs text-muted-foreground">
+              Crea o activa un plan en{" "}
+              <a href="/dashboard/plans" className="text-primary hover:underline">/dashboard/plans</a>{" "}
+              antes de asignar rutinas.
+            </p>
+          </div>
+        ) : (
+          <WeekGrid
+            schedule={schedule as any}
+            plans={activePlans.map((p: any) => ({ id: p.id, name: p.name }))}
+            routines={routines.map((r: any) => ({ id: r.id, name: r.name }))}
+            assignments={assignments as any}
+          />
+        )}
       </div>
-        <RoutineLibraryModal
-          open={libraryOpen}
-          onOpenChange={setLibraryOpen}
-          routines={routines as any}
-        />
+      <RoutineLibraryModal
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        routines={routines as any}
+      />
     </DashboardLayout>
   )
 }
