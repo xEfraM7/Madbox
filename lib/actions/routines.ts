@@ -115,3 +115,96 @@ export async function deleteRoutine(id: string) {
   revalidatePath("/dashboard/horarios")
   revalidatePath("/portal")
 }
+
+// ─── Asignaciones (plan + día → rutina) ──────────────────────
+
+export async function getRoutineAssignments() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("routine_assignments")
+    .select("id, plan_id, day_of_week, routine_id, routines (id, name, content)")
+
+  if (error) throw error
+  return data
+}
+
+interface UpsertAssignmentInput {
+  plan_id: string
+  day_of_week: string
+  routine_id: string
+}
+
+export async function upsertRoutineAssignment(input: UpsertAssignmentInput) {
+  if (!(await checkPermission("schedule.edit"))) {
+    throw new Error("No tienes permisos para asignar rutinas")
+  }
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("routine_assignments")
+    .upsert(
+      {
+        plan_id: input.plan_id,
+        day_of_week: input.day_of_week,
+        routine_id: input.routine_id,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "plan_id,day_of_week" }
+    )
+    .select("*, routines(name), plans(name)")
+    .single()
+
+  if (error) throw error
+
+  await logActivity({
+    action: "routine_assigned",
+    entityType: "routine_assignment",
+    entityId: data.id,
+    entityName: `${(data as any).plans?.name ?? "Plan"} · ${input.day_of_week} → ${(data as any).routines?.name ?? "Rutina"}`,
+  })
+
+  revalidatePath("/dashboard/horarios")
+  revalidatePath("/portal")
+  return data
+}
+
+interface DeleteAssignmentInput {
+  plan_id: string
+  day_of_week: string
+}
+
+export async function deleteRoutineAssignment(input: DeleteAssignmentInput) {
+  if (!(await checkPermission("schedule.delete"))) {
+    throw new Error("No tienes permisos para desasignar rutinas")
+  }
+
+  const supabase = await createClient()
+
+  const { data: existing } = await supabase
+    .from("routine_assignments")
+    .select("id, plans(name), routines(name)")
+    .eq("plan_id", input.plan_id)
+    .eq("day_of_week", input.day_of_week)
+    .maybeSingle()
+
+  const { error } = await supabase
+    .from("routine_assignments")
+    .delete()
+    .eq("plan_id", input.plan_id)
+    .eq("day_of_week", input.day_of_week)
+
+  if (error) throw error
+
+  if (existing) {
+    await logActivity({
+      action: "routine_unassigned",
+      entityType: "routine_assignment",
+      entityId: existing.id,
+      entityName: `${(existing as any).plans?.name ?? "Plan"} · ${input.day_of_week} ✕ ${(existing as any).routines?.name ?? "Rutina"}`,
+    })
+  }
+
+  revalidatePath("/dashboard/horarios")
+  revalidatePath("/portal")
+}
