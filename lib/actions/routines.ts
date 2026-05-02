@@ -122,7 +122,7 @@ export async function getRoutineAssignments() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("routine_assignments")
-    .select("id, plan_id, day_of_week, routine_id, routines (id, name, content)")
+    .select("id, plan_id, day_of_week, routine_id, routines (id, name, content, blocks)")
 
   if (error) throw error
   return data
@@ -249,7 +249,7 @@ export async function getTodayRoutineForMember() {
 
   const { data, error } = await supabase
     .from("routine_assignments")
-    .select("day_of_week, routines (id, name, content)")
+    .select("day_of_week, routines (id, name, content, blocks)")
     .eq("plan_id", member.plan_id)
     .eq("day_of_week", today)
     .maybeSingle()
@@ -262,6 +262,6 @@ export async function getTodayRoutineForMember() {
   return {
     day_of_week: today,
     plan_name: (member as any).plans?.name ?? null,
-    routine: routine as { id: string; name: string; content: string },
+    routine: routine as { id: string; name: string; content: string; blocks: unknown },
   }
 }

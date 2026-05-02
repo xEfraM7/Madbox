@@ -16,7 +16,7 @@ interface DayColumnProps {
   }
   plans: Array<{ id: string; name: string }>
   routinesLibrary: Array<{ id: string; name: string }>
-  assignmentsByPlan: Record<string, { id: string; name: string; content: string }>
+  assignmentsByPlan: Record<string, { id: string; name: string; content: string; blocks: unknown }>
   isToday: boolean
 }
 

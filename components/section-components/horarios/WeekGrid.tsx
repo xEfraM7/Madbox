@@ -37,7 +37,7 @@ interface AssignmentRow {
   plan_id: string
   day_of_week: string
   routine_id: string
-  routines: { id: string; name: string; content: string } | null
+  routines: { id: string; name: string; content: string; blocks: unknown } | null
 }
 
 interface WeekGridProps {
@@ -56,7 +56,7 @@ export function WeekGrid({ schedule, plans, routines, assignments }: WeekGridPro
   )
 
   const assignmentIndex = useMemo(() => {
-    const idx: Record<string, Record<string, { id: string; name: string; content: string }>> = {}
+    const idx: Record<string, Record<string, { id: string; name: string; content: string; blocks: unknown }>> = {}
     for (const a of assignments) {
       if (!a.routines) continue
       idx[a.day_of_week] ??= {}

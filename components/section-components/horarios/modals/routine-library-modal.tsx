@@ -35,7 +35,7 @@ export function RoutineLibraryModal({ open, onOpenChange, routines }: RoutineLib
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<{ id: string; name: string; blocks: unknown } | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewing, setPreviewing] = useState<{ name: string; content: string } | null>(null)
+  const [previewing, setPreviewing] = useState<{ name: string; blocks: unknown } | null>(null)
 
   const filtered = useMemo(() => {
     if (!search.trim()) return routines

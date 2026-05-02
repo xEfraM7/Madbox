@@ -12,7 +12,7 @@ interface RoutineCardProps {
   planId: string
   planName: string
   dayOfWeek: string
-  routine: { id: string; name: string; content: string } | null
+  routine: { id: string; name: string; content: string; blocks: unknown } | null
   routinesLibrary: Array<{ id: string; name: string }>
   highlight?: boolean
 }
