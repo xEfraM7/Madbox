@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { Users, Clock, DollarSign, Loader2, CheckCircle2 } from "lucide-react"
+import { Users, Clock, DollarSign, Loader2, CheckCircle2, Calendar } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -32,58 +32,91 @@ export default function PortalClasesMainComponent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Clases Especiales</h1>
-        <p className="text-muted-foreground text-sm mt-1">Clases disponibles en el gimnasio</p>
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold">Clases Especiales</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+            Clases disponibles en el gimnasio
+          </p>
+        </div>
+        {enrolled.length > 0 && (
+          <Badge className="bg-primary/20 text-primary border-primary/40 gap-1 text-xs">
+            <CheckCircle2 className="h-3 w-3" />
+            {enrolled.length} inscrito{enrolled.length === 1 ? "" : "s"}
+          </Badge>
+        )}
       </div>
 
-      {classes.length === 0 && (
-        <p className="text-muted-foreground text-center py-10">
-          No hay clases disponibles por el momento.
-        </p>
+      {classes.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 flex flex-col items-center gap-3 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <Calendar className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              No hay clases disponibles por el momento.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {classes.map((cls: any) => {
+            const isEnrolled = enrolledClassIds.has(cls.id)
+            const spotsLeft = cls.capacity - (cls.enrolled ?? 0)
+            const isFull = spotsLeft <= 0
+
+            return (
+              <Card
+                key={cls.id}
+                className={cn(
+                  "transition-colors",
+                  isEnrolled ? "border-primary/40" : "hover:border-primary/30",
+                )}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-sm sm:text-base truncate">{cls.name}</CardTitle>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
+                        {cls.instructor}
+                      </p>
+                    </div>
+                    {isEnrolled && (
+                      <Badge className="bg-primary/20 text-primary border-primary/40 shrink-0 gap-1 text-[10px] sm:text-xs">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Inscrito
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="truncate">{cls.schedule}</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                      ${cls.price}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex items-center gap-1.5",
+                        isFull && "text-red-400",
+                      )}
+                    >
+                      <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                      {isFull ? "Sin cupos" : `${spotsLeft} cupo${spotsLeft === 1 ? "" : "s"}`}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       )}
-
-      <div className="grid gap-4">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {classes.map((cls: any) => {
-          const isEnrolled = enrolledClassIds.has(cls.id)
-          const spotsLeft = cls.capacity - (cls.enrolled ?? 0)
-
-          return (
-            <Card key={cls.id} className={cn(isEnrolled && "border-primary/40")}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base">{cls.name}</CardTitle>
-                  {isEnrolled && (
-                    <Badge className="bg-primary/20 text-primary border-primary/40 shrink-0 gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Inscrito
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">{cls.instructor}</p>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {cls.schedule}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4" />
-                    ${cls.price}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {spotsLeft > 0 ? `${spotsLeft} cupos disponibles` : "Sin cupos"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
     </div>
   )
 }

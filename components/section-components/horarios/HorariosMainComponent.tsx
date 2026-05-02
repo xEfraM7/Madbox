@@ -40,14 +40,14 @@ export default function HorariosMainComponent() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="space-y-6">
+        <div className="space-y-5 sm:space-y-6">
           <div>
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-96 mt-2" />
+            <Skeleton className="h-7 sm:h-8 w-48 sm:w-64" />
+            <Skeleton className="h-4 w-72 sm:w-96 mt-2" />
           </div>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-7">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
             {Array.from({ length: 7 }).map((_, i) => (
-              <Skeleton key={i} className="h-64 rounded-lg" />
+              <Skeleton key={i} className="h-56 sm:h-64 rounded-lg" />
             ))}
           </div>
         </div>
@@ -59,22 +59,26 @@ export default function HorariosMainComponent() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-balance">Horarios y Rutinas</h1>
-            <p className="text-muted-foreground mt-2">
+      <div className="space-y-5 sm:space-y-6">
+        <div className="flex items-start justify-between gap-3 sm:gap-4 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-balance">Horarios y Rutinas</h1>
+            <p className="text-muted-foreground text-sm sm:text-base mt-1.5 sm:mt-2">
               Define el horario del gym y las rutinas por día y plan
             </p>
           </div>
-          <Button onClick={() => setLibraryOpen(true)} className="gap-2">
+          <Button
+            onClick={() => setLibraryOpen(true)}
+            className="gap-2 w-full sm:w-auto"
+            size="sm"
+          >
             <Library className="h-4 w-4" />
             Biblioteca de Rutinas
           </Button>
         </div>
 
         {activePlans.length === 0 ? (
-          <div className="border border-dashed rounded-lg p-8 text-center space-y-2">
+          <div className="border border-dashed rounded-lg p-6 sm:p-8 text-center space-y-2">
             <p className="text-sm font-medium">No hay planes activos</p>
             <p className="text-xs text-muted-foreground">
               Crea o activa un plan en{" "}

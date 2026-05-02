@@ -130,12 +130,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       )}
 
       {/* Content */}
-      <main className="flex-1 container mx-auto max-w-3xl px-4 py-6">
+      <main className="flex-1 container mx-auto max-w-5xl px-3 sm:px-4 py-5 sm:py-6">
         {children}
       </main>
 
       {/* Bottom nav (mobile) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
         <div className="flex">
           {nav.map((item) => {
             const Icon = item.icon
@@ -143,10 +143,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             return (
               <Link key={item.href} href={item.href} className="flex-1">
                 <div className={cn(
-                  "flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors",
+                  "flex flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors active:bg-muted/50",
                   active ? "text-primary" : "text-muted-foreground"
                 )}>
-                  <Icon className="h-5 w-5" />
+                  <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
                   {item.name}
                 </div>
               </Link>
