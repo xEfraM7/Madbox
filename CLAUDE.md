@@ -76,7 +76,7 @@ middleware.ts            # Auth gate de Next: redirige a /login si no hay user
 - Client-side: usar `usePermissions()` de `@/lib/hooks/use-permissions`.
   - Patrón: `if (!hasPermission('payments.edit')) ocultar/disabled`.
   - El admin con flag `isAdmin` tiene todos los permisos.
-- Permisos disponibles: `dashboard.view`, `users.{view,edit,delete}`, `plans.{view,edit,delete}`, `payments.{view,edit,delete}`, `classes.{view,edit,delete}`, `roles.{view,create,edit,delete}`, `settings.{view,edit}`, `closings.{view,edit,delete}`.
+- Permisos disponibles: `dashboard.view`, `users.{view,edit,delete}`, `plans.{view,edit,delete}`, `payments.{view,edit,delete}`, `classes.{view,edit,delete}`, `roles.{view,create,edit,delete}`, `settings.{view,edit}`, `closings.{view,edit,delete}`, `schedule.{view,edit,delete}`.
 
 ### 5. TanStack Query
 - `QueryProvider` ya está montado en `app/layout.tsx` con `staleTime: 60s` y `refetchOnWindowFocus: false`.

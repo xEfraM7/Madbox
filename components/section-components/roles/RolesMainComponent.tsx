@@ -69,6 +69,15 @@ export const permissionGroups = [
     ]
   },
   {
+    id: "schedule",
+    label: "Horarios y Rutinas",
+    permissions: [
+      { id: "schedule.view", label: "Ver horarios y rutinas", description: "Ver la sección Horarios y Rutinas" },
+      { id: "schedule.edit", label: "Editar horarios y rutinas", description: "Editar horarios del gym, rutinas y asignaciones" },
+      { id: "schedule.delete", label: "Eliminar rutinas", description: "Borrar rutinas y desasignar" },
+    ]
+  },
+  {
     id: "roles",
     label: "Roles y Administradores",
     permissions: [
