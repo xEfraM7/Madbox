@@ -36,3 +36,14 @@ export function calculateDueDate(paymentDate: string): string {
   const dueDate = getNextMonthDate(paymentDate)
   return dueDate.toISOString().split("T")[0]
 }
+
+/**
+ * Un día se considera cerrado cuando open_time === close_time.
+ * La convención usada en el código es "00:00:00" === "00:00:00", pero
+ * cualquier valor donde open === close cuenta. null/null no es "cerrado"
+ * (sin definir).
+ */
+export function isDayClosed(openTime: string | null, closeTime: string | null): boolean {
+  if (!openTime || !closeTime) return false
+  return openTime === closeTime
+}

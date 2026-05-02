@@ -9,6 +9,7 @@ import { Plus, X } from "lucide-react"
 import { showToast } from "@/lib/sweetalert"
 import { updateGymSchedule } from "@/lib/actions/settings"
 import { usePermissions } from "@/lib/hooks/use-permissions"
+import { isDayClosed } from "@/lib/utils"
 
 interface ScheduleInlineProps {
   id: string
@@ -16,11 +17,6 @@ interface ScheduleInlineProps {
   close_time: string | null
   afternoon_open: string | null
   afternoon_close: string | null
-}
-
-function isClosed(open: string | null, close: string | null) {
-  if (!open || !close) return false
-  return open === close
 }
 
 function toShort(t: string | null): string {
@@ -158,7 +154,7 @@ export function ScheduleInline({
   const [closeVal, setCloseVal] = useState(toShort(close_time))
   const [pmOpenVal, setPmOpenVal] = useState(toShort(afternoon_open))
   const [pmCloseVal, setPmCloseVal] = useState(toShort(afternoon_close))
-  const [closed, setClosed] = useState(isClosed(open_time, close_time))
+  const [closed, setClosed] = useState(isDayClosed(open_time, close_time))
   const [showPm, setShowPm] = useState(Boolean(afternoon_open && afternoon_close))
 
   useEffect(() => {
@@ -166,7 +162,7 @@ export function ScheduleInline({
     setCloseVal(toShort(close_time))
     setPmOpenVal(toShort(afternoon_open))
     setPmCloseVal(toShort(afternoon_close))
-    setClosed(isClosed(open_time, close_time))
+    setClosed(isDayClosed(open_time, close_time))
     setShowPm(Boolean(afternoon_open && afternoon_close))
   }, [open_time, close_time, afternoon_open, afternoon_close])
 

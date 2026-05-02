@@ -1,7 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn, isDayClosed } from "@/lib/utils"
 import { ScheduleInline } from "./ScheduleInline"
 import { RoutineCard } from "./RoutineCard"
 
@@ -21,6 +21,8 @@ interface DayColumnProps {
 }
 
 export function DayColumn({ scheduleRow, plans, routinesLibrary, assignmentsByPlan, isToday }: DayColumnProps) {
+  const closed = isDayClosed(scheduleRow.open_time, scheduleRow.close_time)
+
   return (
     <div
       className={cn(
@@ -42,27 +44,34 @@ export function DayColumn({ scheduleRow, plans, routinesLibrary, assignmentsByPl
         />
       </div>
 
-      <div className="border-t -mx-3" />
-
-      <div className="space-y-2">
-        {plans.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">Sin planes activos</p>
-        ) : (
-          plans.map((plan) => (
-            <div key={plan.id} className="space-y-1">
-              <p className="text-[10px] font-medium uppercase text-muted-foreground tracking-wide truncate">{plan.name}</p>
-              <RoutineCard
-                planId={plan.id}
-                planName={plan.name}
-                dayOfWeek={scheduleRow.day_of_week}
-                routine={assignmentsByPlan[plan.id] ?? null}
-                routinesLibrary={routinesLibrary}
-                highlight={isToday}
-              />
-            </div>
-          ))
-        )}
-      </div>
+      {closed ? (
+        <p className="text-xs text-muted-foreground italic text-center py-4">
+          Sin actividad este día
+        </p>
+      ) : (
+        <>
+          <div className="border-t -mx-3" />
+          <div className="space-y-2">
+            {plans.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Sin planes activos</p>
+            ) : (
+              plans.map((plan) => (
+                <div key={plan.id} className="space-y-1">
+                  <p className="text-[10px] font-medium uppercase text-muted-foreground tracking-wide truncate">{plan.name}</p>
+                  <RoutineCard
+                    planId={plan.id}
+                    planName={plan.name}
+                    dayOfWeek={scheduleRow.day_of_week}
+                    routine={assignmentsByPlan[plan.id] ?? null}
+                    routinesLibrary={routinesLibrary}
+                    highlight={isToday}
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
