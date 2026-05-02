@@ -8,6 +8,7 @@ import { Loader2, Library } from "lucide-react"
 import { getGymSchedule } from "@/lib/actions/settings"
 import { getRoutines, getRoutineAssignments } from "@/lib/actions/routines"
 import { getPlans } from "@/lib/actions/plans"
+import { RoutineLibraryModal } from "./modals/routine-library-modal"
 
 export default function HorariosMainComponent() {
   const [libraryOpen, setLibraryOpen] = useState(false)
@@ -67,6 +68,11 @@ export default function HorariosMainComponent() {
           Schedule: {schedule.length} días · Planes activos: {activePlans.length} · Rutinas: {routines.length} · Asignaciones: {assignments.length}
         </div>
       </div>
+        <RoutineLibraryModal
+          open={libraryOpen}
+          onOpenChange={setLibraryOpen}
+          routines={routines as any}
+        />
     </DashboardLayout>
   )
 }
