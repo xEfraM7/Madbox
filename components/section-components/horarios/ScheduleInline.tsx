@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Plus, X } from "lucide-react"
 import { showToast } from "@/lib/sweetalert"
+import { isDayClosed } from "@/lib/utils"
 import { updateGymSchedule } from "@/lib/actions/settings"
 import { usePermissions } from "@/lib/hooks/use-permissions"
-import { isDayClosed } from "@/lib/utils"
 
 interface ScheduleInlineProps {
   id: string
@@ -29,69 +29,72 @@ function toFull(t: string): string | null {
   return `${t}:00`
 }
 
-// ─── 12h time input helpers ─────────────────────────────────
+// ─── 12h time helpers (sin AM/PM toggle, period implícito) ────
 
-function parse24(value: string): { hour: string; minute: string; period: "AM" | "PM" } {
-  if (!value) return { hour: "", minute: "", period: "AM" }
+type Period = "AM" | "PM"
+
+/** Parsea "HH:MM" 24h a hora 12h (1-12) y minutos. */
+function parse24To12(value: string): { hour: string; minute: string } {
+  if (!value) return { hour: "", minute: "" }
   const [hStr = "", mStr = ""] = value.split(":")
   const h = parseInt(hStr, 10)
   const m = parseInt(mStr, 10)
-  if (isNaN(h) || isNaN(m)) return { hour: "", minute: "", period: "AM" }
+  if (isNaN(h) || isNaN(m)) return { hour: "", minute: "" }
   let h12: number
-  let period: "AM" | "PM"
-  if (h === 0) { h12 = 12; period = "AM" }
-  else if (h < 12) { h12 = h; period = "AM" }
-  else if (h === 12) { h12 = 12; period = "PM" }
-  else { h12 = h - 12; period = "PM" }
-  return { hour: String(h12), minute: String(m).padStart(2, "0"), period }
+  if (h === 0) h12 = 12             // 00:00 (medianoche) → 12 (raro pero lo soportamos)
+  else if (h <= 12) h12 = h         // 1-12 → mismo número (12 en mañana = mediodía)
+  else h12 = h - 12                 // 13-23 → 1-11 PM
+  return { hour: String(h12), minute: String(m).padStart(2, "0") }
 }
 
-function format24(h12: number, minute: number, period: "AM" | "PM"): string {
+/** Formatea (hora 1-12, minuto, period) a "HH:MM" 24h.
+ *  Convención: "12" siempre = mediodía (12:00) en cualquier sección.
+ *  En AM (mañana): h12=12 → 12:00 (noon); h12 1-11 → 01:00-11:00.
+ *  En PM (tarde): h12=12 → 12:00 (noon); h12 1-11 → 13:00-23:00.
+ */
+function format12To24(h12: number, minute: number, period: Period): string {
   let h: number
-  if (period === "AM") h = h12 === 12 ? 0 : h12
-  else h = h12 === 12 ? 12 : h12 + 12
+  if (h12 === 12) h = 12                          // 12 siempre = noon
+  else h = period === "AM" ? h12 : h12 + 12       // 1-11 según período
   return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
 }
 
 function formatLabel12(value: string | null): string {
   if (!value) return "—"
-  const p = parse24(value.slice(0, 5))
-  if (!p.hour || !p.minute) return "—"
-  return `${p.hour}:${p.minute} ${p.period}`
+  const { hour, minute } = parse24To12(value.slice(0, 5))
+  if (!hour || !minute) return "—"
+  const [hStr] = value.split(":")
+  const h = parseInt(hStr, 10)
+  const period: Period = h < 12 || h === 24 ? "AM" : "PM"
+  return `${hour}:${minute} ${period}`
 }
 
 function Time12h({
   value,
+  period,
   onCommit,
   disabled,
 }: {
   value: string
+  period: Period
   onCommit: (next: string) => void
   disabled?: boolean
 }) {
-  const init = parse24(value)
+  const init = parse24To12(value)
   const [hour, setHour] = useState(init.hour)
   const [minute, setMinute] = useState(init.minute)
-  const [period, setPeriod] = useState<"AM" | "PM">(init.period)
 
   useEffect(() => {
-    const p = parse24(value)
+    const p = parse24To12(value)
     setHour(p.hour)
     setMinute(p.minute)
-    setPeriod(p.period)
   }, [value])
 
-  const commit = (h: string, m: string, p: "AM" | "PM") => {
+  const commit = (h: string, m: string) => {
     const hn = parseInt(h, 10)
     const mn = parseInt(m, 10)
     if (isNaN(hn) || isNaN(mn) || hn < 1 || hn > 12 || mn < 0 || mn > 59) return
-    onCommit(format24(hn, mn, p))
-  }
-
-  const togglePeriod = () => {
-    const next = period === "AM" ? "PM" : "AM"
-    setPeriod(next)
-    commit(hour, minute, next)
+    onCommit(format12To24(hn, mn, period))
   }
 
   return (
@@ -104,7 +107,7 @@ function Time12h({
         placeholder="hh"
         value={hour}
         onChange={(e) => setHour(e.target.value.replace(/\D/g, "").slice(0, 2))}
-        onBlur={() => commit(hour, minute, period)}
+        onBlur={() => commit(hour, minute)}
         disabled={disabled}
         className="w-9 h-7 px-1 text-center text-xs bg-background border border-input rounded outline-none focus:ring-1 focus:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]"
       />
@@ -120,19 +123,12 @@ function Time12h({
         onBlur={() => {
           const padded = minute && minute.length === 1 ? minute.padStart(2, "0") : minute
           if (padded !== minute) setMinute(padded)
-          commit(hour, padded, period)
+          commit(hour, padded)
         }}
         disabled={disabled}
         className="w-9 h-7 px-1 text-center text-xs bg-background border border-input rounded outline-none focus:ring-1 focus:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]"
       />
-      <button
-        type="button"
-        onClick={togglePeriod}
-        disabled={disabled}
-        className="h-7 px-1.5 text-[10px] font-semibold bg-muted hover:bg-muted/80 rounded border border-input transition-colors"
-      >
-        {period}
-      </button>
+      <span className="text-[10px] text-muted-foreground font-medium pl-0.5">{period}</span>
     </div>
   )
 }
@@ -260,6 +256,7 @@ export function ScheduleInline({
               <span className="text-[10px] text-muted-foreground">Abre</span>
               <Time12h
                 value={openVal}
+                period="AM"
                 onCommit={(next) => {
                   setOpenVal(next)
                   persistMorning(next, closeVal)
@@ -269,6 +266,7 @@ export function ScheduleInline({
               <span className="text-[10px] text-muted-foreground">Cierra</span>
               <Time12h
                 value={closeVal}
+                period="AM"
                 onCommit={(next) => {
                   setCloseVal(next)
                   persistMorning(openVal, next)
@@ -294,6 +292,7 @@ export function ScheduleInline({
                 <span className="text-[10px] text-muted-foreground">Abre</span>
                 <Time12h
                   value={pmOpenVal}
+                  period="PM"
                   onCommit={(next) => {
                     setPmOpenVal(next)
                     persistAfternoon(next, pmCloseVal)
@@ -303,6 +302,7 @@ export function ScheduleInline({
                 <span className="text-[10px] text-muted-foreground">Cierra</span>
                 <Time12h
                   value={pmCloseVal}
+                  period="PM"
                   onCommit={(next) => {
                     setPmCloseVal(next)
                     persistAfternoon(pmOpenVal, next)
