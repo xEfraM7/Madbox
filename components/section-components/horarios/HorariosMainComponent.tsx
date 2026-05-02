@@ -4,7 +4,8 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
-import { Loader2, Library } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Library } from "lucide-react"
 import { getGymSchedule } from "@/lib/actions/settings"
 import { getRoutines, getRoutineAssignments } from "@/lib/actions/routines"
 import { getPlans } from "@/lib/actions/plans"
@@ -39,8 +40,16 @@ export default function HorariosMainComponent() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="space-y-6">
+          <div>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96 mt-2" />
+          </div>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-7">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-64 rounded-lg" />
+            ))}
+          </div>
         </div>
       </DashboardLayout>
     )
