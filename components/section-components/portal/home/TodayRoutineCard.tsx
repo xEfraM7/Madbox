@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import ReactMarkdown from "react-markdown"
 import { CalendarDays, Loader2, Pencil, Plus } from "lucide-react"
+import { RoutineBlocks } from "@/components/shared/routine-blocks/RoutineBlocks"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -57,9 +57,10 @@ export function TodayRoutineCard() {
         </CardHeader>
         <CardContent className="space-y-4">
           {data.routine ? (
-            <div className="prose prose-invert prose-sm max-w-none">
-              <ReactMarkdown>{data.routine.content || "_Sin contenido._"}</ReactMarkdown>
-            </div>
+            <RoutineBlocks
+              blocks={(data.routine as { blocks: unknown }).blocks}
+              emptyMessage="Tu coach aún no completó esta rutina."
+            />
           ) : (
             <p className="text-sm text-muted-foreground">
               Tu coach aún no asignó la rutina de hoy.
