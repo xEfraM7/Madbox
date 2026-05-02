@@ -255,6 +255,7 @@ export type Database = {
           show_avatar: boolean
           show_plan: boolean
           show_rms: boolean
+          show_wods: boolean
           start_date: string | null
           status: string | null
           updated_at: string | null
@@ -275,6 +276,7 @@ export type Database = {
           show_avatar?: boolean
           show_plan?: boolean
           show_rms?: boolean
+          show_wods?: boolean
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
@@ -295,6 +297,7 @@ export type Database = {
           show_avatar?: boolean
           show_plan?: boolean
           show_rms?: boolean
+          show_wods?: boolean
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
@@ -757,6 +760,69 @@ export type Database = {
         }
         Relationships: []
       }
+      wod_logs: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          member_id: string
+          notes: string | null
+          routine_id: string
+          rx: boolean
+          score_kg: number | null
+          score_reps: number | null
+          score_rounds: number | null
+          score_seconds: number | null
+          score_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          member_id: string
+          notes?: string | null
+          routine_id: string
+          rx?: boolean
+          score_kg?: number | null
+          score_reps?: number | null
+          score_rounds?: number | null
+          score_seconds?: number | null
+          score_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          member_id?: string
+          notes?: string | null
+          routine_id?: string
+          rx?: boolean
+          score_kg?: number | null
+          score_reps?: number | null
+          score_rounds?: number | null
+          score_seconds?: number | null
+          score_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wod_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wod_logs_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -959,7 +1025,7 @@ export interface MonthlyClosingPreview {
 }
 
 export interface PendingPeriod {
-  period: string      // "2026-01"
-  label: string       // "Enero 2026"
-  isOldest: boolean   // To highlight the oldest one
+  period: string
+  label: string
+  isOldest: boolean
 }

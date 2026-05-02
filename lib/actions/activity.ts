@@ -16,6 +16,7 @@ export type ActivityAction =
   | "routine_assigned" | "routine_unassigned"
   | "schedule_updated"
   | "pr_updated" | "pr_deleted"
+  | "wod_logged" | "wod_deleted"
 
 export type EntityType =
   | "payment" | "member" | "plan" | "special_class"
@@ -23,6 +24,7 @@ export type EntityType =
   | "monthly_closing" | "fund"
   | "routine" | "routine_assignment" | "gym_schedule"
   | "personal_record"
+  | "wod_log"
 
 interface LogActivityParams {
   action: ActivityAction
