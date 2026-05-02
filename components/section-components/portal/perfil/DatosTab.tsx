@@ -58,8 +58,8 @@ export function DatosTab() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("La imagen no puede superar 2MB")
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La imagen no puede superar 10MB")
       return
     }
 
@@ -68,15 +68,16 @@ export function DatosTab() {
     reader.readAsDataURL(file)
 
     setUploadingAvatar(true)
+    const loadingToast = toast.loading("Subiendo imagen...")
     try {
       const fd = new FormData()
       fd.append("avatar", file)
       const url = await uploadAvatarToCloudinary(fd)
       await updateAvatar(url)
       queryClient.invalidateQueries({ queryKey: ["my-profile"] })
-      toast.success("Foto de perfil actualizada")
+      toast.success("Foto de perfil actualizada correctamente", { id: loadingToast })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al subir imagen")
+      toast.error(err instanceof Error ? err.message : "Error al subir la imagen", { id: loadingToast })
       setAvatarPreview(null)
     } finally {
       setUploadingAvatar(false)
@@ -120,7 +121,7 @@ export function DatosTab() {
           />
           <div className="text-center">
             <p className="font-medium text-sm truncate max-w-[200px]">{profile?.name}</p>
-            <p className="text-[11px] text-muted-foreground mt-1">JPG, PNG o WebP · Máx 2MB</p>
+            <p className="text-[11px] text-muted-foreground mt-1">JPG, PNG o WebP · Máx 10MB</p>
           </div>
         </CardContent>
       </Card>

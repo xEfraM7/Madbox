@@ -22,7 +22,26 @@
       "Bash(sed -n '/^\\\\/\\\\/ Monthly Closing types/,$p')",
       "Read(//tmp/**)",
       "PowerShell(Copy-Item \"d:\\\\Proyectos\\\\Madbox\\\\public\\\\Madbox_logo.jpeg\" \"d:\\\\Proyectos\\\\Madbox\\\\app\\\\icon.jpg\" -Force)",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Read(//c/Users/efrain/.claude/skills/subagent-driven-development/**)",
+      "Read(//c/Users/efrain/.agents/skills/subagent-driven-development/**)",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__apply_migration",
+      "Bash(npm run *)",
+      "Bash(npx eslint *)",
+      "Bash(./node_modules/.bin/eslint .)",
+      "Bash(npx next *)",
+      "Bash(node_modules/.bin/next lint *)",
+      "PowerShell(Set-Location \"D:\\\\Proyectos\\\\Madbox\"; $args = @\\(\"lint\"\\); & \"D:\\\\Proyectos\\\\Madbox\\\\node_modules\\\\.bin\\\\next.cmd\" @args 2>&1)",
+      "Bash(git commit -m 'feat\\(roles\\): agregar permisos schedule.{view,edit,delete} *)",
+      "Bash(git commit -m 'feat\\(routines\\): server actions de asignaciones \\(plan x día\\) *)",
+      "Bash(git commit -m 'feat\\(routines\\): server action getTodayRoutineForMember para portal *)",
+      "Bash(git commit -m 'chore: agregar react-markdown para render de rutinas *)",
+      "Bash(git commit -m 'feat\\(horarios\\): ruta /dashboard/horarios y skeleton de la sección *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Proyectos\\\\Madbox\\\\components\\\\section-components\\\\horarios\" -Recurse)",
+      "Bash(Select-Object FullName)"
     ]
   }
 }
