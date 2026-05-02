@@ -11,8 +11,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Save, Building2, Calendar, Loader2, KeyRound, Users, AlertTriangle } from "lucide-react"
-import { getGymSettings, updateGymSettings, getGymSchedule, updateGymSchedule } from "@/lib/actions/settings"
+import { Save, Building2, Loader2, KeyRound, Users, AlertTriangle } from "lucide-react"
+import { getGymSettings, updateGymSettings } from "@/lib/actions/settings"
 import { updatePassword } from "@/lib/actions/auth"
 import { migrateMembersToPortal, migrateAdminMetadata } from "@/lib/actions/migration"
 
@@ -28,8 +28,6 @@ interface PasswordForm {
   newPassword: string
   confirmPassword: string
 }
-
-const dayOrder = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 export default function SettingsMainComponent() {
   const queryClient = useQueryClient()
@@ -69,15 +67,6 @@ export default function SettingsMainComponent() {
     queryFn: getGymSettings,
   })
 
-  const { data: schedule = [], isLoading: loadingSchedule } = useQuery({
-    queryKey: ["gym-schedule"],
-    queryFn: getGymSchedule,
-  })
-
-  const sortedSchedule = [...schedule].sort((a: any, b: any) => 
-    dayOrder.indexOf(a.day_of_week) - dayOrder.indexOf(b.day_of_week)
-  )
-
   const { register, handleSubmit, reset } = useForm<GymInfoForm>({
     defaultValues: { name: "", email: "", phone: "", address: "" }
   })
@@ -108,18 +97,6 @@ export default function SettingsMainComponent() {
     },
   })
 
-  const updateScheduleMutation = useMutation({
-    mutationFn: ({ id, open_time, close_time }: { id: string; open_time: string; close_time: string }) => 
-      updateGymSchedule(id, { open_time, close_time }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["gym-schedule"] })
-      showToast.success("Horario actualizado", "El horario ha sido guardado." )
-    },
-    onError: () => {
-      showToast.error("Error", "No se pudo actualizar el horario." )
-    },
-  })
-
   const onSubmitGymInfo = (data: GymInfoForm) => {
     updateSettingsMutation.mutate(data)
   }
@@ -147,18 +124,7 @@ export default function SettingsMainComponent() {
     updatePasswordMutation.mutate(data.newPassword)
   }
 
-  const handleScheduleChange = (id: string, field: "open_time" | "close_time", value: string) => {
-    const daySchedule = schedule.find((s: any) => s.id === id)
-    if (daySchedule) {
-      updateScheduleMutation.mutate({
-        id,
-        open_time: field === "open_time" ? value : daySchedule.open_time,
-        close_time: field === "close_time" ? value : daySchedule.close_time
-      })
-    }
-  }
-
-  if (loadingSettings || loadingSchedule) {
+  if (loadingSettings) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
@@ -179,7 +145,6 @@ export default function SettingsMainComponent() {
         <Tabs defaultValue="general" className="space-y-6">
           <TabsList>
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="schedule">Horarios</TabsTrigger>
             <TabsTrigger value="account">Cuenta</TabsTrigger>
             <TabsTrigger value="portal">Portal</TabsTrigger>
           </TabsList>
@@ -223,54 +188,6 @@ export default function SettingsMainComponent() {
                     )}
                   </Button>
                 </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="schedule">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>Horarios del Gimnasio</CardTitle>
-                    <CardDescription>Define los horarios de apertura</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="hidden sm:grid grid-cols-3 gap-4 text-sm font-medium text-muted-foreground">
-                    <span>Día</span>
-                    <span>Apertura</span>
-                    <span>Cierre</span>
-                  </div>
-                  {sortedSchedule.map((day: any) => (
-                    <div key={day.id} className="flex flex-col sm:grid sm:grid-cols-3 gap-2 sm:gap-4 sm:items-center p-3 sm:p-0 border sm:border-0 rounded-lg sm:rounded-none">
-                      <Label className="font-medium">{day.day_of_week}</Label>
-                      <div className="flex gap-2 sm:contents">
-                        <div className="flex-1 sm:block">
-                          <span className="text-xs text-muted-foreground sm:hidden">Abre: </span>
-                          <Input 
-                            type="time" 
-                            defaultValue={day.open_time?.slice(0, 5)} 
-                            className="scheme-dark"
-                            onBlur={(e) => handleScheduleChange(day.id, "open_time", e.target.value)}
-                          />
-                        </div>
-                        <div className="flex-1 sm:block">
-                          <span className="text-xs text-muted-foreground sm:hidden">Cierra: </span>
-                          <Input 
-                            type="time" 
-                            defaultValue={day.close_time?.slice(0, 5)} 
-                            className="scheme-dark"
-                            onBlur={(e) => handleScheduleChange(day.id, "close_time", e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
