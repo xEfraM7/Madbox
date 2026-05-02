@@ -208,3 +208,60 @@ export async function deleteRoutineAssignment(input: DeleteAssignmentInput) {
   revalidatePath("/dashboard/horarios")
   revalidatePath("/portal")
 }
+
+// ─── Portal del miembro ──────────────────────────────────────
+
+const DAY_MAP: Record<string, string> = {
+  monday: "Lunes",
+  tuesday: "Martes",
+  wednesday: "Miércoles",
+  thursday: "Jueves",
+  friday: "Viernes",
+  saturday: "Sábado",
+  sunday: "Domingo",
+}
+
+function getTodayLabel(): string {
+  // Calculado server-side en zona horaria de Venezuela
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Caracas",
+    weekday: "long",
+  })
+  const englishDay = formatter.format(new Date()).toLowerCase()
+  return DAY_MAP[englishDay] ?? "Lunes"
+}
+
+export async function getTodayRoutineForMember() {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: member } = await supabase
+    .from("members")
+    .select("plan_id, plans(name)")
+    .eq("auth_user_id", user.id)
+    .maybeSingle()
+
+  if (!member?.plan_id) return null
+
+  const today = getTodayLabel()
+
+  const { data, error } = await supabase
+    .from("routine_assignments")
+    .select("day_of_week, routines (id, name, content)")
+    .eq("plan_id", member.plan_id)
+    .eq("day_of_week", today)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data?.routines) return { day_of_week: today, plan_name: (member as any).plans?.name ?? null, routine: null }
+
+  const routine = Array.isArray(data.routines) ? data.routines[0] : data.routines
+
+  return {
+    day_of_week: today,
+    plan_name: (member as any).plans?.name ?? null,
+    routine: routine as { id: string; name: string; content: string },
+  }
+}
