@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { getMyProfile } from "@/lib/actions/portal"
+import { TodayRoutineCard } from "./TodayRoutineCard"
 
 const statusConfig = {
   active:  { label: "Activo",    color: "bg-green-900/50 text-green-400 border-green-700" },
@@ -84,6 +85,8 @@ export default function PortalHomeMainComponent() {
           </div>
         </CardContent>
       </Card>
+
+      <TodayRoutineCard />
 
       {/* Plan card */}
       {plan && (
