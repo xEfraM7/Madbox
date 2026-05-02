@@ -12,15 +12,21 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
 import {
   upsertWodLog, deleteWodLog, getMyPlanRoutines,
   type WodLog,
 } from "@/lib/actions/wod-logs"
 import {
-  type ScoreType, SCORE_TYPE_LABEL, SCORE_TYPE_ORDER,
+  type ScoreType,
   todayCaracasISO, getDayOfWeekLabel,
 } from "@/lib/constants/wod-score"
+import {
+  parseBlocks,
+  getPrimaryConditioningBlock,
+  getScoreTypeForBlock,
+  BLOCK_META,
+  type RoutineBlock,
+} from "@/lib/constants/routine-blocks"
 import { WodScoreInputs, type WodScoreInputValues } from "./WodScoreInputs"
 
 interface LogWodModalProps {
@@ -36,6 +42,17 @@ const EMPTY_VALUES: WodScoreInputValues = {
   minutes: 0, seconds: 0,
   rounds: 0, reps_extra: 0,
   reps: 0, kg: 0,
+}
+
+function blockHeadline(block: RoutineBlock): string {
+  switch (block.type) {
+    case "amrap":    return `${BLOCK_META.amrap.label} ${block.minutes} min`
+    case "for_time": return BLOCK_META.for_time.label + (block.time_cap_min ? ` · cap ${block.time_cap_min} min` : "")
+    case "rft":      return `${BLOCK_META.rft.label} · ${block.rounds} rounds`
+    case "for_reps": return `${BLOCK_META.for_reps.label} · ${block.target_reps} reps`
+    case "strength": return `${BLOCK_META.strength.label}: ${block.exercise || "(sin ejercicio)"}`
+    default:         return BLOCK_META[block.type].label
+  }
 }
 
 export function LogWodModal({ open, onOpenChange, existingLog, defaultDate, defaultRoutineId }: LogWodModalProps) {
@@ -60,6 +77,14 @@ export function LogWodModal({ open, onOpenChange, existingLog, defaultDate, defa
     [planRoutines, dayLabel],
   )
 
+  const primaryBlock = useMemo<RoutineBlock | null>(() => {
+    if (!routineForDay) return null
+    return getPrimaryConditioningBlock(parseBlocks(routineForDay.blocks))
+  }, [routineForDay])
+
+  const scoreType: ScoreType | null = getScoreTypeForBlock(primaryBlock)
+
+  // Reset al abrir
   useEffect(() => {
     if (!open) return
     if (existingLog) {
@@ -85,15 +110,25 @@ export function LogWodModal({ open, onOpenChange, existingLog, defaultDate, defa
     setErrors({})
   }, [open, existingLog, defaultDate, today])
 
+  // Cuando cambia el scoreType derivado, actualiza el state local
+  useEffect(() => {
+    if (!open || existingLog) return
+    if (scoreType) {
+      setValues((prev) => ({ ...prev, score_type: scoreType }))
+    }
+  }, [open, existingLog, scoreType])
+
   const targetRoutineId = existingLog?.routine_id ?? defaultRoutineId ?? routineForDay?.id ?? null
+  const effectiveScoreType: ScoreType | null = existingLog?.score_type ?? scoreType ?? null
 
   const upsertMutation = useMutation({
     mutationFn: async () => {
       if (!targetRoutineId) throw new Error("No hay rutina asignada para esa fecha")
+      if (!effectiveScoreType) throw new Error("Esta rutina no tiene un bloque registrable")
 
       const errs: Partial<Record<keyof WodScoreInputValues, string>> = {}
       let payload: Parameters<typeof upsertWodLog>[0]
-      switch (values.score_type) {
+      switch (effectiveScoreType) {
         case "for_time": {
           const total = values.minutes * 60 + values.seconds
           if (total <= 0) errs.seconds = "Ingresa un tiempo válido"
@@ -178,7 +213,8 @@ export function LogWodModal({ open, onOpenChange, existingLog, defaultDate, defa
     },
   })
 
-  const setScoreType = (t: ScoreType) => setValues({ ...values, score_type: t })
+  // Sync values.score_type con effectiveScoreType para que WodScoreInputs muestre los inputs correctos
+  const inputValues = effectiveScoreType ? { ...values, score_type: effectiveScoreType } : values
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -186,9 +222,9 @@ export function LogWodModal({ open, onOpenChange, existingLog, defaultDate, defa
         <DialogHeader>
           <DialogTitle>{existingLog ? "Editar WOD" : "Registrar WOD"}</DialogTitle>
           <DialogDescription>
-            {routineForDay
-              ? <>Rutina: <span className="font-semibold">{routineForDay.name}</span></>
-              : <span className="text-destructive">Sin rutina asignada para {dayLabel}</span>}
+            {primaryBlock
+              ? <>Score: <span className="font-semibold">{blockHeadline(primaryBlock)}</span></>
+              : <span className="text-destructive">No hay bloque registrable en esta rutina</span>}
           </DialogDescription>
         </DialogHeader>
 
@@ -205,48 +241,37 @@ export function LogWodModal({ open, onOpenChange, existingLog, defaultDate, defa
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-sm">Tipo de score</Label>
-            <div className="grid grid-cols-4 gap-1 rounded-md border border-border p-1">
-              {SCORE_TYPE_ORDER.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setScoreType(t)}
-                  className={cn(
-                    "px-2 py-1.5 text-xs font-medium rounded transition-colors",
-                    values.score_type === t
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                  )}
-                >
-                  {SCORE_TYPE_LABEL[t]}
-                </button>
-              ))}
-            </div>
-          </div>
+          {effectiveScoreType ? (
+            <WodScoreInputs values={inputValues} onChange={(v) => setValues(v)} errors={errors} />
+          ) : (
+            <p className="text-sm text-muted-foreground italic text-center py-4">
+              Sin score asociado para esta rutina.
+            </p>
+          )}
 
-          <WodScoreInputs values={values} onChange={setValues} errors={errors} />
+          {effectiveScoreType && (
+            <>
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
+                <div>
+                  <Label htmlFor="rx" className="text-sm font-medium">Como Rx</Label>
+                  <p className="text-xs text-muted-foreground">¿Hiciste el WOD como prescrito?</p>
+                </div>
+                <Switch id="rx" checked={rx} onCheckedChange={setRx} />
+              </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-            <div>
-              <Label htmlFor="rx" className="text-sm font-medium">Como Rx</Label>
-              <p className="text-xs text-muted-foreground">¿Hiciste el WOD como prescrito?</p>
-            </div>
-            <Switch id="rx" checked={rx} onCheckedChange={setRx} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="notes" className="text-sm">Notas (opcional)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Ej: usé KB 16kg, partner Juan"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value.slice(0, 500))}
-              rows={3}
-            />
-            <p className="text-[11px] text-muted-foreground">{notes.length} / 500</p>
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="notes" className="text-sm">Notas (opcional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Ej: usé KB 16kg, partner Juan"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value.slice(0, 500))}
+                  rows={3}
+                />
+                <p className="text-[11px] text-muted-foreground">{notes.length} / 500</p>
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter className="gap-2 flex-col sm:flex-row mt-2">
@@ -269,7 +294,7 @@ export function LogWodModal({ open, onOpenChange, existingLog, defaultDate, defa
           <Button
             type="button"
             onClick={() => upsertMutation.mutate()}
-            disabled={upsertMutation.isPending || deleteMutation.isPending || !targetRoutineId}
+            disabled={upsertMutation.isPending || deleteMutation.isPending || !targetRoutineId || !effectiveScoreType}
             className="gap-2"
           >
             {upsertMutation.isPending

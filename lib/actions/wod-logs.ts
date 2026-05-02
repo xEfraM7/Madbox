@@ -62,7 +62,7 @@ export interface UpsertWodLogInput {
 
 export interface PlanRoutineForDay {
   day_of_week: string
-  routine: { id: string; name: string; content: string } | null
+  routine: { id: string; name: string; content: string; blocks: unknown } | null
 }
 
 // ─── Validación ──────────────────────────────────────────
@@ -109,7 +109,7 @@ export async function getMyPlanRoutines(): Promise<PlanRoutineForDay[]> {
 
   const { data, error } = await supabase
     .from("routine_assignments")
-    .select("day_of_week, routines(id, name, content)")
+    .select("day_of_week, routines(id, name, content, blocks)")
     .eq("plan_id", me.plan_id)
 
   if (error) throw error
@@ -326,7 +326,7 @@ export interface WodLeaderboardEntry {
 }
 
 export interface WodLeaderboardResult {
-  routine: { id: string; name: string; content: string } | null
+  routine: { id: string; name: string; content: string; blocks: unknown } | null
   entries: WodLeaderboardEntry[]
 }
 
@@ -357,7 +357,7 @@ export async function getTodayLeaderboard(): Promise<WodLeaderboardResult> {
 
   const { data: assignment, error: aErr } = await admin
     .from("routine_assignments")
-    .select("routine_id, routines(id, name, content)")
+    .select("routine_id, routines(id, name, content, blocks)")
     .eq("plan_id", me.plan_id)
     .eq("day_of_week", todayLabel)
     .maybeSingle()

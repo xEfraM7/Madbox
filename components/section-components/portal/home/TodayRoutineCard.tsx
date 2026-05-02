@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { getTodayRoutineForMember } from "@/lib/actions/routines"
 import { getTodayWodLog } from "@/lib/actions/wod-logs"
 import { formatScore } from "@/lib/constants/wod-score"
+import { getPrimaryConditioningBlock, parseBlocks } from "@/lib/constants/routine-blocks"
 import { LogWodModal } from "../wod/log-wod-modal"
 
 export function TodayRoutineCard() {
@@ -67,7 +68,7 @@ export function TodayRoutineCard() {
             </p>
           )}
 
-          {data.routine && (
+          {data.routine && getPrimaryConditioningBlock(parseBlocks((data.routine as { blocks: unknown }).blocks)) !== null && (
             <div className="border-t pt-4">
               {log ? (
                 <div className="flex items-center justify-between gap-3 rounded-md bg-primary/5 p-3">
