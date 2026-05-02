@@ -11,6 +11,8 @@ interface DayColumnProps {
     day_of_week: string
     open_time: string | null
     close_time: string | null
+    afternoon_open: string | null
+    afternoon_close: string | null
   }
   plans: Array<{ id: string; name: string }>
   routinesLibrary: Array<{ id: string; name: string }>
@@ -35,6 +37,8 @@ export function DayColumn({ scheduleRow, plans, routinesLibrary, assignmentsByPl
           id={scheduleRow.id}
           open_time={scheduleRow.open_time}
           close_time={scheduleRow.close_time}
+          afternoon_open={scheduleRow.afternoon_open}
+          afternoon_close={scheduleRow.afternoon_close}
         />
       </div>
 

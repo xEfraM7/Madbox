@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       activity_log: {
@@ -143,6 +168,8 @@ export type Database = {
       }
       gym_schedule: {
         Row: {
+          afternoon_close: string | null
+          afternoon_open: string | null
           close_time: string
           created_at: string | null
           day_of_week: string
@@ -150,6 +177,8 @@ export type Database = {
           open_time: string
         }
         Insert: {
+          afternoon_close?: string | null
+          afternoon_open?: string | null
           close_time: string
           created_at?: string | null
           day_of_week: string
@@ -157,6 +186,8 @@ export type Database = {
           open_time: string
         }
         Update: {
+          afternoon_close?: string | null
+          afternoon_open?: string | null
           close_time?: string
           created_at?: string | null
           day_of_week?: string
@@ -810,6 +841,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

@@ -37,7 +37,15 @@ export async function getGymSchedule() {
   return data
 }
 
-export async function updateGymSchedule(id: string, schedule: { open_time: string; close_time: string }) {
+export async function updateGymSchedule(
+  id: string,
+  schedule: {
+    open_time: string
+    close_time: string
+    afternoon_open?: string | null
+    afternoon_close?: string | null
+  },
+) {
   const supabase = await createClient()
   const { error } = await supabase
     .from("gym_schedule")
@@ -45,5 +53,6 @@ export async function updateGymSchedule(id: string, schedule: { open_time: strin
     .eq("id", id)
 
   if (error) throw error
+  revalidatePath("/dashboard/horarios")
   revalidatePath("/dashboard/settings")
 }

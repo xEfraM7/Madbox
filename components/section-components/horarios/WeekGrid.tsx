@@ -28,6 +28,8 @@ interface ScheduleRow {
   day_of_week: string
   open_time: string | null
   close_time: string | null
+  afternoon_open: string | null
+  afternoon_close: string | null
 }
 
 interface AssignmentRow {
