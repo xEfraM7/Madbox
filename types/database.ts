@@ -243,6 +243,7 @@ export type Database = {
           auth_user_id: string | null
           avatar_url: string | null
           created_at: string | null
+          discoverable: boolean
           email: string
           frozen: boolean | null
           id: string
@@ -251,6 +252,9 @@ export type Database = {
           payment_date: string | null
           phone: string | null
           plan_id: string | null
+          show_avatar: boolean
+          show_plan: boolean
+          show_rms: boolean
           start_date: string | null
           status: string | null
           updated_at: string | null
@@ -259,6 +263,7 @@ export type Database = {
           auth_user_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
+          discoverable?: boolean
           email: string
           frozen?: boolean | null
           id?: string
@@ -267,6 +272,9 @@ export type Database = {
           payment_date?: string | null
           phone?: string | null
           plan_id?: string | null
+          show_avatar?: boolean
+          show_plan?: boolean
+          show_rms?: boolean
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
@@ -275,6 +283,7 @@ export type Database = {
           auth_user_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
+          discoverable?: boolean
           email?: string
           frozen?: boolean | null
           id?: string
@@ -283,6 +292,9 @@ export type Database = {
           payment_date?: string | null
           phone?: string | null
           plan_id?: string | null
+          show_avatar?: boolean
+          show_plan?: boolean
+          show_rms?: boolean
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
@@ -454,6 +466,44 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_records: {
+        Row: {
+          achieved_at: string | null
+          created_at: string | null
+          id: string
+          member_id: string
+          movement: string
+          updated_at: string | null
+          weight_kg: number
+        }
+        Insert: {
+          achieved_at?: string | null
+          created_at?: string | null
+          id?: string
+          member_id: string
+          movement: string
+          updated_at?: string | null
+          weight_kg: number
+        }
+        Update: {
+          achieved_at?: string | null
+          created_at?: string | null
+          id?: string
+          member_id?: string
+          movement?: string
+          updated_at?: string | null
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_records_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
             referencedColumns: ["id"]
           },
         ]

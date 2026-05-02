@@ -1,0 +1,133 @@
+"use client"
+
+import { useQuery } from "@tanstack/react-query"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { Loader2, CalendarDays } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { getMemberPublicProfile } from "@/lib/actions/records"
+import {
+  FAMILY_LABEL,
+  FAMILY_ORDER,
+  getMovementsByFamily,
+} from "@/lib/constants/movements"
+import { TotalsStrip } from "../perfil/totals-strip"
+
+interface MemberDetailModalProps {
+  memberId: string | null
+  onClose: () => void
+}
+
+export function MemberDetailModal({ memberId, onClose }: MemberDetailModalProps) {
+  const open = memberId !== null
+
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["member-public", memberId],
+    queryFn: () => getMemberPublicProfile(memberId as string),
+    enabled: open,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const initials = profile?.name
+    ? profile.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "?"
+
+  const recordsByMovement = (() => {
+    if (!profile) return {}
+    const map: Record<string, number> = {}
+    for (const r of profile.records) map[r.movement] = Number(r.weight_kg)
+    return map
+  })()
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="sr-only">Perfil del miembro</DialogTitle>
+        </DialogHeader>
+
+        {isLoading || !profile ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="flex items-start gap-4">
+              <Avatar className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 border-2 border-primary/30">
+                <AvatarImage src={profile.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-lg font-bold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg sm:text-xl font-bold truncate">{profile.name}</h2>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {profile.plan_name && (
+                    <Badge variant="outline" className="text-[11px]">
+                      {profile.plan_name}
+                    </Badge>
+                  )}
+                  {profile.start_date && (
+                    <Badge variant="outline" className="text-[11px] gap-1">
+                      <CalendarDays className="h-3 w-3" />
+                      Desde {format(new Date(profile.start_date + "T00:00:00"), "MMM yyyy", { locale: es })}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {profile.totals === null ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Este miembro optó por no mostrar sus marcas.
+              </p>
+            ) : (
+              <>
+                <TotalsStrip totals={profile.totals} />
+
+                <div className="space-y-3">
+                  {FAMILY_ORDER.map((family) => {
+                    const movements = getMovementsByFamily(family)
+                    if (movements.length === 0) return null
+                    return (
+                      <div key={family} className="border rounded-lg p-3 sm:p-4">
+                        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                          {FAMILY_LABEL[family]}
+                        </h3>
+                        <ul className="space-y-1.5">
+                          {movements.map((m) => {
+                            const w = recordsByMovement[m.id]
+                            return (
+                              <li
+                                key={m.id}
+                                className="flex items-center justify-between gap-3 text-sm"
+                              >
+                                <span className="truncate">{m.label}</span>
+                                <span className="font-semibold tabular-nums shrink-0">
+                                  {w !== undefined && w > 0
+                                    ? `${w.toLocaleString("es-VE")} kg`
+                                    : "—"}
+                                </span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}

@@ -5,7 +5,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { Home, Calendar, CreditCard, User, LogOut, Menu, X } from "lucide-react"
+import { Home, Calendar, CreditCard, User, LogOut, Menu, X, Compass } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -14,6 +14,7 @@ import { getMyProfile } from "@/lib/actions/portal"
 
 const nav = [
   { name: "Inicio", href: "/portal", icon: Home },
+  { name: "Descubrir", href: "/portal/descubrir", icon: Compass },
   { name: "Clases", href: "/portal/clases", icon: Calendar },
   { name: "Pagos", href: "/portal/pagos", icon: CreditCard },
   { name: "Perfil", href: "/portal/perfil", icon: User },

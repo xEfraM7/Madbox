@@ -15,12 +15,14 @@ export type ActivityAction =
   | "routine_created" | "routine_updated" | "routine_deleted"
   | "routine_assigned" | "routine_unassigned"
   | "schedule_updated"
+  | "pr_updated" | "pr_deleted"
 
 export type EntityType =
   | "payment" | "member" | "plan" | "special_class"
   | "special_class_payment" | "exchange_rate" | "role" | "admin"
   | "monthly_closing" | "fund"
   | "routine" | "routine_assignment" | "gym_schedule"
+  | "personal_record"
 
 interface LogActivityParams {
   action: ActivityAction
