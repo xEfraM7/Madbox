@@ -20,6 +20,7 @@ interface RoutineLibraryModalProps {
     id: string
     name: string
     content: string
+    blocks: unknown
     routine_assignments: Array<{ count: number }> | { count: number }[]
   }>
 }
@@ -32,7 +33,7 @@ export function RoutineLibraryModal({ open, onOpenChange, routines }: RoutineLib
 
   const [search, setSearch] = useState("")
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<{ id: string; name: string; content: string } | null>(null)
+  const [editing, setEditing] = useState<{ id: string; name: string; blocks: unknown } | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewing, setPreviewing] = useState<{ name: string; content: string } | null>(null)
 
@@ -43,8 +44,8 @@ export function RoutineLibraryModal({ open, onOpenChange, routines }: RoutineLib
   }, [routines, search])
 
   const duplicateMutation = useMutation({
-    mutationFn: (r: { name: string; content: string }) =>
-      createRoutine({ name: `${r.name} (copia)`, content: r.content }),
+    mutationFn: (r: { name: string; blocks: unknown }) =>
+      createRoutine({ name: `${r.name} (copia)`, blocks: r.blocks as never }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["routines"] })
       showToast.success("Rutina duplicada", "Se creó una copia.")
@@ -154,7 +155,7 @@ export function RoutineLibraryModal({ open, onOpenChange, routines }: RoutineLib
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => { setEditing(r); setFormOpen(true) }}
+                        onClick={() => { setEditing({ id: r.id, name: r.name, blocks: r.blocks }); setFormOpen(true) }}
                         title="Editar"
                       >
                         <Edit className="h-4 w-4" />
