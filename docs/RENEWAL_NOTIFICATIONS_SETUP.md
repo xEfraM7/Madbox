@@ -6,128 +6,66 @@ La aplicación envía automáticamente correos de notificación a los miembros c
 - **3 días antes**: Recordatorio de renovación
 - **El mismo día**: Notificación urgente de vencimiento
 
+El envío se hace con **Resend** desde el dominio configurado.
+
 ## Componentes
 
-### 1. Edge Function: `send-renewal-notifications`
-- **Ubicación**: Supabase Edge Functions
-- **Slug**: `send-renewal-notifications`
-- **Método**: POST
-- **Descripción**: Busca miembros con suscripción próxima a vencer y envía correos de notificación
+### 1. Endpoint del cron: `app/api/cron/renewal-notifications/route.ts`
+- Método: `GET`
+- Protegido con header `Authorization: Bearer ${CRON_SECRET}`
+- Llama a `sendRenewalNotifications()` y devuelve el resultado en JSON
 
-### 2. Tabla de Registro: `renewal_notifications_log`
+### 2. Programación: `vercel.json`
+```json
+{
+  "crons": [
+    { "path": "/api/cron/renewal-notifications", "schedule": "0 12 * * *" }
+  ]
+}
+```
+`0 12 * * *` = **12:00 UTC** todos los días (≈ 8:00 AM hora Venezuela, UTC-4). Ajusta el horario si lo necesitas. Vercel Cron solo soporta granularidad por hora en planes gratuitos.
+
+### 3. Tabla de Registro: `renewal_notifications_log`
 - Registra cada ejecución de la función
 - Almacena cantidad de correos enviados, errores, etc.
 
-### 3. Funciones TypeScript (Aplicación)
-- `lib/actions/email.ts`: Función `sendRenewalNotification()`
-- `lib/actions/renewal-notifications.ts`: Lógica de negocio
+### 4. Funciones TypeScript
+- `lib/actions/email.ts`: `sendWelcomeEmail()` y `sendRenewalNotification()` (Resend)
+- `lib/actions/renewal-notifications.ts`: `sendRenewalNotifications()` (lógica de negocio que recorre miembros y dispara los correos)
 
-## Configuración del Cron Job
+## Variables de entorno
 
-### Opción 1: Usar Supabase Cron (Recomendado)
+En `.env.local` y en **Vercel → Settings → Environment Variables**:
 
-Supabase permite configurar cron jobs directamente. Necesitas:
-
-1. **Acceder a Supabase Dashboard**
-   - Ve a tu proyecto en https://app.supabase.com
-   - Navega a "Edge Functions"
-
-2. **Crear un Cron Job**
-   - En la sección de Edge Functions, busca la opción de "Cron"
-   - Configura un cron job que ejecute la edge function diariamente
-
-3. **Configuración recomendada**
-   ```
-   Horario: 08:00 UTC (o la hora que prefieras)
-   Frecuencia: Diaria
-   Función: send-renewal-notifications
-   ```
-
-### Opción 2: Usar GitHub Actions
-
-Crea un archivo `.github/workflows/renewal-notifications.yml`:
-
-```yaml
-name: Send Renewal Notifications
-
-on:
-  schedule:
-    # Ejecutar diariamente a las 8:00 AM UTC
-    - cron: '0 8 * * *'
-
-jobs:
-  send-notifications:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger renewal notifications
-        run: |
-          curl -X POST \
-            https://pnpoegsergczspixocez.supabase.co/functions/v1/send-renewal-notifications \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json"
+```
+RESEND_API_KEY=re_xxxxxxxxxx
+RESEND_FROM_EMAIL=Madbox <no-reply@tudominio.com>
+CRON_SECRET=<una-cadena-aleatoria-larga>
+NEXT_PUBLIC_SITE_URL=https://tudominio.com
 ```
 
-### Opción 3: Usar Vercel Crons
+- `RESEND_FROM_EMAIL` puede ser solo el correo (`no-reply@tudominio.com`) — en ese caso el código antepone el nombre del gimnasio automáticamente — o ya venir con formato `"Nombre <correo@dominio>"`.
+- `CRON_SECRET` lo genera Vercel automáticamente al detectar `crons` en `vercel.json`. Verifícalo en **Settings → Environment Variables** después del primer deploy.
 
-Si usas Vercel, puedes crear un endpoint que Vercel ejecute automáticamente:
+## Prueba manual
 
-```typescript
-// app/api/cron/renewal-notifications/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-
-export async function POST(request: NextRequest) {
-  // Verificar que sea una solicitud de Vercel
-  if (request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  try {
-    const response = await fetch(
-      'https://pnpoegsergczspixocez.supabase.co/functions/v1/send-renewal-notifications',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    )
-
-    const data = await response.json()
-    return NextResponse.json(data)
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to send notifications' }, { status: 500 })
-  }
-}
-```
-
-Luego en `vercel.json`:
-
-```json
-{\n  "crons": [{\n    "path": "/api/cron/renewal-notifications",\n    "schedule": "0 8 * * *"\n  }]\n}
-```
-
-## Variables de Entorno Requeridas
-
-La edge function necesita acceso a:
-- `SUPABASE_URL`: URL de tu proyecto Supabase
-- `SUPABASE_SERVICE_ROLE_KEY`: Clave de servicio de Supabase
-- `GMAIL_USER`: Email de Gmail para enviar correos
-- `GMAIL_APP_PASSWORD`: Contraseña de aplicación de Gmail
-- `NEXT_PUBLIC_SITE_URL`: URL de tu aplicación (para el logo en los correos)
-
-## Prueba Manual
-
-Para probar la edge function manualmente:
+En local (con el server corriendo):
 
 ```bash
-curl -X POST \
-  https://pnpoegsergczspixocez.supabase.co/functions/v1/send-renewal-notifications \
-  -H "Authorization: Bearer YOUR_ANON_KEY" \
-  -H "Content-Type: application/json"
+curl -X GET \
+  http://localhost:3000/api/cron/renewal-notifications \
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-O desde la aplicación:
+En producción:
+
+```bash
+curl -X GET \
+  https://tudominio.com/api/cron/renewal-notifications \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+O desde código:
 
 ```typescript
 import { sendRenewalNotifications } from '@/lib/actions/renewal-notifications'
@@ -138,46 +76,41 @@ console.log(result)
 
 ## Monitoreo
 
-Para monitorear las ejecuciones:
-
 ```sql
--- Ver últimas ejecuciones
-SELECT * FROM renewal_notifications_log 
-ORDER BY executed_at DESC 
+-- Últimas ejecuciones
+SELECT * FROM renewal_notifications_log
+ORDER BY executed_at DESC
 LIMIT 10;
 
--- Ver estadísticas
-SELECT 
-  DATE(executed_at) as fecha,
-  COUNT(*) as ejecuciones,
-  SUM(sent_count) as total_correos_enviados,
-  AVG(sent_count) as promedio_correos
+-- Estadísticas mensuales
+SELECT
+  DATE(executed_at) AS fecha,
+  COUNT(*) AS ejecuciones,
+  SUM(sent_count) AS total_correos_enviados,
+  AVG(sent_count) AS promedio_correos
 FROM renewal_notifications_log
 WHERE executed_at > NOW() - INTERVAL '30 days'
 GROUP BY DATE(executed_at)
 ORDER BY fecha DESC;
 ```
 
+Adicionalmente, en el dashboard de Resend → **Logs** ves cada email enviado, su estado (delivered, bounced, complained) y el cuerpo.
+
 ## Troubleshooting
 
 ### Los correos no se envían
-1. Verifica que `GMAIL_USER` y `GMAIL_APP_PASSWORD` estén configurados en Supabase
-2. Revisa los logs de la edge function en Supabase Dashboard
-3. Verifica que los miembros tengan email y status "active"
+1. Verifica que `RESEND_API_KEY` y `RESEND_FROM_EMAIL` estén configurados en Vercel.
+2. Confirma en Resend → **Domains** que el dominio está **Verified** (DNS aplicados correctamente).
+3. Revisa los logs en Resend para ver el error exacto del envío.
+4. Verifica que los miembros tengan `email`, `status = "active"` y `frozen = false`.
 
-### La edge function falla
-1. Revisa los logs en Supabase Dashboard → Edge Functions → send-renewal-notifications
-2. Verifica que la tabla `members` tenga los datos correctos
-3. Asegúrate de que `gym_settings` tenga al menos un registro
+### Error 401 al ejecutar el cron manualmente
+- Falta el header `Authorization: Bearer <CRON_SECRET>` o el valor no coincide con la env var.
 
 ### Los correos llegan a spam
-1. Configura SPF, DKIM y DMARC en tu dominio
-2. Usa un servicio de email profesional como SendGrid o Resend en lugar de Gmail
-3. Personaliza el "From" con tu dominio
+- Asegúrate de tener SPF, DKIM y DMARC verificados (Resend los provee al añadir el dominio).
+- Usa un `from` con tu dominio verificado, no un Gmail genérico.
 
-## Próximos Pasos
+## Migración previa (histórico)
 
-1. Configura el cron job según tu preferencia
-2. Prueba manualmente la edge function
-3. Monitorea los logs en `renewal_notifications_log`
-4. Ajusta el horario según tus necesidades
+Antes de Resend este flujo usaba **Gmail SMTP vía nodemailer** y una **Edge Function de Supabase** (`send-renewal-notifications`). Ambos quedaron sustituidos por la ruta `/api/cron/renewal-notifications` en este proyecto. Si la edge function aún existe en Supabase, puedes borrarla desde el dashboard.

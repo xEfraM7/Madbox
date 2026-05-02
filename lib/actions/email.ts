@@ -1,6 +1,6 @@
 "use server"
 
-import nodemailer from "nodemailer"
+import { Resend } from "resend"
 import { createClient } from "@/utils/supabase/server"
 
 interface WelcomeEmailParams {
@@ -19,29 +19,29 @@ interface RenewalNotificationParams {
   gymName?: string
 }
 
-// Crear transporter de Gmail
-function createTransporter() {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-  })
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return null
+  return new Resend(apiKey)
+}
+
+function buildFrom(gymName: string) {
+  const fromEnv = process.env.RESEND_FROM_EMAIL
+  if (!fromEnv) return null
+  // Si la env var ya viene con formato "Nombre <correo@dominio>", usarla tal cual.
+  // Si solo es el correo, anteponer el nombre del gimnasio.
+  return fromEnv.includes("<") ? fromEnv : `${gymName} <${fromEnv}>`
 }
 
 export async function sendWelcomeEmail(params: WelcomeEmailParams) {
   const { to, memberName, planName, gymName = "Madbox" } = params
 
-  const gmailUser = process.env.GMAIL_USER
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD
-
-  if (!gmailUser || !gmailPassword) {
-    console.log("Gmail no configurado. Email de bienvenida no enviado a:", to)
+  const resend = getResendClient()
+  if (!resend) {
+    console.log("Resend no configurado. Email de bienvenida no enviado a:", to)
     return { success: false, error: "Email service not configured" }
   }
 
-  // Obtener configuración del gimnasio
   const supabase = await createClient()
   const { data: settings } = await supabase
     .from("gym_settings")
@@ -49,15 +49,18 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams) {
     .single()
 
   const finalGymName = settings?.name || gymName
-  // URL del logo - usar la URL pública
   const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/Madbox_logo.jpeg`
 
-  try {
-    const transporter = createTransporter()
+  const from = buildFrom(finalGymName)
+  if (!from) {
+    console.log("RESEND_FROM_EMAIL no configurado. Email no enviado a:", to)
+    return { success: false, error: "Sender email not configured" }
+  }
 
-    const mailOptions = {
-      from: `"${finalGymName}" <${gmailUser}>`,
-      to: to,
+  try {
+    const { data, error } = await resend.emails.send({
+      from,
+      to,
       subject: `¡Bienvenido a ${finalGymName}!`,
       html: generateWelcomeEmailHtml({
         memberName,
@@ -68,11 +71,15 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams) {
         gymAddress: settings?.address,
         logoUrl,
       }),
+    })
+
+    if (error) {
+      console.error("Error enviando email de bienvenida:", error)
+      return { success: false, error: error.message }
     }
 
-    const info = await transporter.sendMail(mailOptions)
-    console.log("Email de bienvenida enviado:", info.messageId)
-    return { success: true, id: info.messageId }
+    console.log("Email de bienvenida enviado:", data?.id)
+    return { success: true, id: data?.id }
   } catch (error) {
     console.error("Error enviando email de bienvenida:", error)
     return { success: false, error: "Failed to send email" }
@@ -82,15 +89,12 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams) {
 export async function sendRenewalNotification(params: RenewalNotificationParams) {
   const { to, memberName, planName, daysUntilExpiry, expiryDate, gymName = "Madbox" } = params
 
-  const gmailUser = process.env.GMAIL_USER
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD
-
-  if (!gmailUser || !gmailPassword) {
-    console.log("Gmail no configurado. Email de renovación no enviado a:", to)
+  const resend = getResendClient()
+  if (!resend) {
+    console.log("Resend no configurado. Email de renovación no enviado a:", to)
     return { success: false, error: "Email service not configured" }
   }
 
-  // Obtener configuración del gimnasio
   const supabase = await createClient()
   const { data: settings } = await supabase
     .from("gym_settings")
@@ -100,17 +104,21 @@ export async function sendRenewalNotification(params: RenewalNotificationParams)
   const finalGymName = settings?.name || gymName
   const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/Madbox_logo.jpeg`
 
+  const from = buildFrom(finalGymName)
+  if (!from) {
+    console.log("RESEND_FROM_EMAIL no configurado. Email no enviado a:", to)
+    return { success: false, error: "Sender email not configured" }
+  }
+
+  const subject = daysUntilExpiry === 0
+    ? `⚠️ Tu suscripción a ${finalGymName} vence hoy`
+    : `⏰ Tu suscripción a ${finalGymName} vence en ${daysUntilExpiry} días`
+
   try {
-    const transporter = createTransporter()
-
-    const subject = daysUntilExpiry === 0 
-      ? `⚠️ Tu suscripción a ${finalGymName} vence hoy`
-      : `⏰ Tu suscripción a ${finalGymName} vence en ${daysUntilExpiry} días`
-
-    const mailOptions = {
-      from: `"${finalGymName}" <${gmailUser}>`,
-      to: to,
-      subject: subject,
+    const { data, error } = await resend.emails.send({
+      from,
+      to,
+      subject,
       html: generateRenewalNotificationHtml({
         memberName,
         planName,
@@ -122,11 +130,15 @@ export async function sendRenewalNotification(params: RenewalNotificationParams)
         gymAddress: settings?.address,
         logoUrl,
       }),
+    })
+
+    if (error) {
+      console.error("Error enviando email de renovación:", error)
+      return { success: false, error: error.message }
     }
 
-    const info = await transporter.sendMail(mailOptions)
-    console.log("Email de renovación enviado:", info.messageId)
-    return { success: true, id: info.messageId }
+    console.log("Email de renovación enviado:", data?.id)
+    return { success: true, id: data?.id }
   } catch (error) {
     console.error("Error enviando email de renovación:", error)
     return { success: false, error: "Failed to send email" }

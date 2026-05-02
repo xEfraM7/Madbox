@@ -21,7 +21,8 @@
       "Bash(rmdir .tmp-migration)",
       "Bash(sed -n '/^\\\\/\\\\/ Monthly Closing types/,$p')",
       "Read(//tmp/**)",
-      "PowerShell(Copy-Item \"d:\\\\Proyectos\\\\Madbox\\\\public\\\\Madbox_logo.jpeg\" \"d:\\\\Proyectos\\\\Madbox\\\\app\\\\icon.jpg\" -Force)"
+      "PowerShell(Copy-Item \"d:\\\\Proyectos\\\\Madbox\\\\public\\\\Madbox_logo.jpeg\" \"d:\\\\Proyectos\\\\Madbox\\\\app\\\\icon.jpg\" -Force)",
+      "Bash(npm uninstall *)"
     ]
   }
 }
