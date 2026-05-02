@@ -12,11 +12,15 @@ export type ActivityAction =
   | "class_payment_registered" | "class_payment_deleted"
   | "rate_updated" | "role_updated" | "invitation_sent"
   | "monthly_closing_created" | "funds_reset"
+  | "routine_created" | "routine_updated" | "routine_deleted"
+  | "routine_assigned" | "routine_unassigned"
+  | "schedule_updated"
 
 export type EntityType =
   | "payment" | "member" | "plan" | "special_class"
   | "special_class_payment" | "exchange_rate" | "role" | "admin"
   | "monthly_closing" | "fund"
+  | "routine" | "routine_assignment" | "gym_schedule"
 
 interface LogActivityParams {
   action: ActivityAction
