@@ -1,11 +1,14 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server"
+import { createAdminClient } from "@/utils/supabase/admin"
 import { revalidatePath } from "next/cache"
 import {
   type ScoreType,
   todayCaracasISO,
   getDayOfWeekLabel,
+  rankableValue,
+  isLowerBetter,
 } from "@/lib/constants/wod-score"
 import { logActivity } from "./activity"
 
@@ -304,4 +307,179 @@ export async function deleteWodLog(id: string): Promise<void> {
   revalidatePath("/portal")
   revalidatePath("/portal/wod")
   revalidatePath("/portal/descubrir")
+}
+
+// ─── Cross-member ────────────────────────────────────────
+
+export interface WodLeaderboardEntry {
+  member_id: string
+  name: string
+  avatar_url: string | null
+  score_type: ScoreType
+  score_seconds: number | null
+  score_rounds: number | null
+  score_reps: number | null
+  score_kg: number | null
+  rx: boolean
+  rankable: number
+  position: number
+}
+
+export interface WodLeaderboardResult {
+  routine: { id: string; name: string; content: string } | null
+  entries: WodLeaderboardEntry[]
+}
+
+async function ensureAuthenticatedAndGetMember(): Promise<{ id: string; plan_id: string | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("No autenticado")
+
+  const { data, error } = await supabase
+    .from("members")
+    .select("id, plan_id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) throw new Error("Miembro no encontrado")
+  return { id: data.id, plan_id: data.plan_id }
+}
+
+export async function getTodayLeaderboard(): Promise<WodLeaderboardResult> {
+  const me = await ensureAuthenticatedAndGetMember()
+  if (!me.plan_id) return { routine: null, entries: [] }
+
+  const today = todayCaracasISO()
+  const todayLabel = getDayOfWeekLabel(today)
+
+  const admin = createAdminClient()
+
+  const { data: assignment, error: aErr } = await admin
+    .from("routine_assignments")
+    .select("routine_id, routines(id, name, content)")
+    .eq("plan_id", me.plan_id)
+    .eq("day_of_week", todayLabel)
+    .maybeSingle()
+
+  if (aErr) throw aErr
+  if (!assignment) return { routine: null, entries: [] }
+
+  const routine = Array.isArray((assignment as any).routines)
+    ? ((assignment as any).routines[0] ?? null)
+    : ((assignment as any).routines ?? null)
+  if (!routine) return { routine: null, entries: [] }
+
+  const { data: logs, error: lErr } = await admin
+    .from("wod_logs")
+    .select("member_id, score_type, score_seconds, score_rounds, score_reps, score_kg, rx, created_at")
+    .eq("routine_id", assignment.routine_id)
+    .eq("date", today)
+
+  if (lErr) throw lErr
+  if (!logs || logs.length === 0) return { routine, entries: [] }
+
+  const memberIds = Array.from(new Set(logs.map((l) => l.member_id)))
+
+  const { data: members, error: mErr } = await admin
+    .from("members")
+    .select("id, name, avatar_url, discoverable, show_wods, show_avatar")
+    .in("id", memberIds)
+    .eq("discoverable", true)
+    .eq("show_wods", true)
+
+  if (mErr) throw mErr
+  if (!members || members.length === 0) return { routine, entries: [] }
+
+  const visibleIds = new Set(members.map((m) => m.id))
+  const memberById = new Map(members.map((m) => [m.id, m]))
+
+  const enriched = logs
+    .filter((l) => visibleIds.has(l.member_id))
+    .map((l) => {
+      const m = memberById.get(l.member_id)!
+      const score = {
+        score_type: l.score_type as ScoreType,
+        score_seconds: l.score_seconds,
+        score_rounds: l.score_rounds,
+        score_reps: l.score_reps,
+        score_kg: l.score_kg !== null ? Number(l.score_kg) : null,
+      }
+      return {
+        member_id: l.member_id,
+        name: m.name,
+        avatar_url: m.show_avatar ? m.avatar_url : null,
+        score_type: score.score_type,
+        score_seconds: score.score_seconds,
+        score_rounds: score.score_rounds,
+        score_reps: score.score_reps,
+        score_kg: score.score_kg,
+        rx: l.rx,
+        rankable: rankableValue(score),
+        created_at: l.created_at as string,
+      }
+    })
+
+  enriched.sort((a, b) => {
+    const lower = isLowerBetter(a.score_type)
+    const cmp = lower ? a.rankable - b.rankable : b.rankable - a.rankable
+    if (cmp !== 0) return cmp
+    return a.created_at.localeCompare(b.created_at)
+  })
+
+  const top = enriched.slice(0, 10).map((e, i) => ({
+    member_id: e.member_id,
+    name: e.name,
+    avatar_url: e.avatar_url,
+    score_type: e.score_type,
+    score_seconds: e.score_seconds,
+    score_rounds: e.score_rounds,
+    score_reps: e.score_reps,
+    score_kg: e.score_kg,
+    rx: e.rx,
+    rankable: e.rankable,
+    position: i + 1,
+  }))
+
+  return { routine, entries: top }
+}
+
+export async function getMemberRecentWods(memberId: string, limit = 5): Promise<WodLog[]> {
+  await ensureAuthenticatedAndGetMember()
+  const admin = createAdminClient()
+
+  const { data: target, error: mErr } = await admin
+    .from("members")
+    .select("id, discoverable, show_wods")
+    .eq("id", memberId)
+    .maybeSingle()
+
+  if (mErr) throw mErr
+  if (!target || !target.discoverable || !target.show_wods) return []
+
+  const { data, error } = await admin
+    .from("wod_logs")
+    .select("id, member_id, routine_id, date, score_type, score_seconds, score_rounds, score_reps, score_kg, rx, notes, created_at, routines(name)")
+    .eq("member_id", memberId)
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    member_id: row.member_id,
+    routine_id: row.routine_id,
+    routine_name: Array.isArray(row.routines) ? (row.routines[0]?.name ?? "") : (row.routines?.name ?? ""),
+    date: row.date,
+    score_type: row.score_type as ScoreType,
+    score_seconds: row.score_seconds,
+    score_rounds: row.score_rounds,
+    score_reps: row.score_reps,
+    score_kg: row.score_kg !== null ? Number(row.score_kg) : null,
+    rx: row.rx,
+    notes: row.notes,
+    created_at: row.created_at,
+  }))
 }
