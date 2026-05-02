@@ -645,6 +645,7 @@ export type Database = {
       }
       routines: {
         Row: {
+          blocks: Json
           content: string
           created_at: string | null
           id: string
@@ -652,6 +653,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          blocks?: Json
           content?: string
           created_at?: string | null
           id?: string
@@ -659,6 +661,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          blocks?: Json
           content?: string
           created_at?: string | null
           id?: string
