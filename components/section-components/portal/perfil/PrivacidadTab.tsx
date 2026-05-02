@@ -40,6 +40,11 @@ const TOGGLES: Array<{
     title: "Mostrar mis RMs",
     desc: "Tus marcas serán visibles en tu card y contarán para los rankings.",
   },
+  {
+    key: "show_wods",
+    title: "Mostrar mis WODs",
+    desc: "Tus registros de WOD aparecerán en leaderboards y en tu perfil público.",
+  },
 ]
 
 export function PrivacidadTab() {

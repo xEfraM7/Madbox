@@ -13,12 +13,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getMemberPublicProfile } from "@/lib/actions/records"
+import { getMemberRecentWods } from "@/lib/actions/wod-logs"
 import {
   FAMILY_LABEL,
   FAMILY_ORDER,
   getMovementsByFamily,
 } from "@/lib/constants/movements"
 import { TotalsStrip } from "../perfil/totals-strip"
+import { Flame } from "lucide-react"
+import { formatScore } from "@/lib/constants/wod-score"
 
 interface MemberDetailModalProps {
   memberId: string | null
@@ -31,6 +34,13 @@ export function MemberDetailModal({ memberId, onClose }: MemberDetailModalProps)
   const { data: profile, isLoading } = useQuery({
     queryKey: ["member-public", memberId],
     queryFn: () => getMemberPublicProfile(memberId as string),
+    enabled: open,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: recentWods = [] } = useQuery({
+    queryKey: ["member-recent-wods", memberId],
+    queryFn: () => getMemberRecentWods(memberId as string, 5),
     enabled: open,
     staleTime: 5 * 60 * 1000,
   })
@@ -123,6 +133,39 @@ export function MemberDetailModal({ memberId, onClose }: MemberDetailModalProps)
                     )
                   })}
                 </div>
+
+                {recentWods.length > 0 && (
+                  <div className="border rounded-lg p-3 sm:p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Flame className="h-4 w-4 text-primary" />
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        WODs recientes
+                      </h3>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {recentWods.map((w) => (
+                        <li key={w.id} className="flex items-center gap-3 text-sm">
+                          <span className="text-xs text-muted-foreground w-16 shrink-0 tabular-nums">
+                            {w.date.slice(5)}
+                          </span>
+                          <span className="flex-1 min-w-0 truncate">{w.routine_name}</span>
+                          <span className="font-semibold tabular-nums shrink-0">
+                            {formatScore({
+                              score_type: w.score_type,
+                              score_seconds: w.score_seconds,
+                              score_rounds: w.score_rounds,
+                              score_reps: w.score_reps,
+                              score_kg: w.score_kg,
+                            })}
+                          </span>
+                          <Badge variant={w.rx ? "default" : "outline"} className="text-[10px] shrink-0">
+                            {w.rx ? "RX" : "S"}
+                          </Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </>
             )}
           </div>
