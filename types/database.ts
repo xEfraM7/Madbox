@@ -517,6 +517,72 @@ export type Database = {
         }
         Relationships: []
       }
+      routine_assignments: {
+        Row: {
+          created_at: string | null
+          day_of_week: string
+          id: string
+          plan_id: string
+          routine_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: string
+          id?: string
+          plan_id: string
+          routine_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: string
+          id?: string
+          plan_id?: string
+          routine_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_assignments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_assignments_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routines: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       special_class_payments: {
         Row: {
           amount: number
@@ -748,6 +814,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 // Monthly Closing types
 export interface MonthlyClosing {
   id: string
@@ -812,4 +879,3 @@ export interface PendingPeriod {
   label: string       // "Enero 2026"
   isOldest: boolean   // To highlight the oldest one
 }
-
