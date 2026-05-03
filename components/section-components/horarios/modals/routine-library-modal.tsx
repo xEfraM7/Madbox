@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import Swal from "sweetalert2"
 import { showToast } from "@/lib/sweetalert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Edit, Trash2, Eye, Copy, BookOpen } from "lucide-react"
@@ -36,6 +36,7 @@ export function RoutineLibraryModal({ open, onOpenChange, routines }: RoutineLib
   const [editing, setEditing] = useState<{ id: string; name: string; blocks: unknown } | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewing, setPreviewing] = useState<{ name: string; blocks: unknown } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; usage: number } | null>(null)
 
   const filtered = useMemo(() => {
     if (!search.trim()) return routines
@@ -63,23 +64,11 @@ export function RoutineLibraryModal({ open, onOpenChange, routines }: RoutineLib
     onError: (e: Error) => showToast.error("Error", e.message),
   })
 
-  const handleDelete = async (r: { id: string; name: string; routine_assignments: Array<{ count: number }> }) => {
+  const handleDelete = (r: { id: string; name: string; routine_assignments: Array<{ count: number }> }) => {
     const usage = Array.isArray(r.routine_assignments)
       ? r.routine_assignments[0]?.count ?? 0
       : 0
-    const confirm = await Swal.fire({
-      title: "¿Eliminar rutina?",
-      html: usage > 0
-        ? `<b>${r.name}</b> está asignada en ${usage} día(s). Se eliminará junto con sus asignaciones.`
-        : `Eliminar <b>${r.name}</b> permanentemente.`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-      background: "#0a0a0a",
-      color: "#fff",
-    })
-    if (confirm.isConfirmed) deleteMutation.mutate(r.id)
+    setDeleteTarget({ id: r.id, name: r.name, usage })
   }
 
   return (
@@ -188,6 +177,28 @@ export function RoutineLibraryModal({ open, onOpenChange, routines }: RoutineLib
         open={previewOpen}
         onOpenChange={setPreviewOpen}
         routine={previewing}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="¿Eliminar rutina?"
+        description={
+          deleteTarget
+            ? deleteTarget.usage > 0
+              ? `"${deleteTarget.name}" está asignada en ${deleteTarget.usage} día(s). Se eliminará junto con sus asignaciones.`
+              : `Eliminar "${deleteTarget.name}" permanentemente.`
+            : ""
+        }
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteMutation.mutate(deleteTarget.id)
+            setDeleteTarget(null)
+          }
+        }}
       />
     </>
   )
