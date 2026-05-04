@@ -184,6 +184,13 @@ export interface DiscoverableMember {
 export interface MemberPublicProfile extends DiscoverableMember {
   start_date: string | null
   records: PersonalRecord[]
+  gender: "male" | "female" | null
+  quote: string | null
+  age: number | null
+  weight_kg: number | null
+  height_cm: number | null
+  athlete_since_year: number | null
+  athlete_level: "rx" | "scaled" | "beginner" | null
 }
 
 export interface RankingEntry {
@@ -205,6 +212,7 @@ interface MemberRow {
   avatar_url: string | null
   plan_id: string | null
   start_date: string | null
+  gender: string | null
   discoverable: boolean
   show_plan: boolean
   show_avatar: boolean
@@ -221,19 +229,22 @@ interface RecordRow {
   updated_at: string | null
 }
 
-export async function getDiscoverableMembers(search?: string): Promise<DiscoverableMember[]> {
+export async function getDiscoverableMembers(
+  options: { gender: "male" | "female"; search?: string },
+): Promise<DiscoverableMember[]> {
   await ensureAuthenticated()
 
   const admin = createAdminClient()
 
   let query = admin
     .from("members")
-    .select("id, name, avatar_url, plan_id, start_date, discoverable, show_plan, show_avatar, show_rms, plans(name)")
+    .select("id, name, avatar_url, plan_id, start_date, gender, discoverable, show_plan, show_avatar, show_rms, plans(name)")
     .eq("discoverable", true)
+    .eq("gender", options.gender)
     .order("name", { ascending: true })
 
-  if (search && search.trim().length > 0) {
-    query = query.ilike("name", `%${search.trim()}%`)
+  if (options.search && options.search.trim().length > 0) {
+    query = query.ilike("name", `%${options.search.trim()}%`)
   }
 
   const { data: members, error } = await query
@@ -285,16 +296,33 @@ export async function getMemberPublicProfile(memberId: string): Promise<MemberPu
 
   const { data: member, error } = await admin
     .from("members")
-    .select("id, name, avatar_url, plan_id, start_date, discoverable, show_plan, show_avatar, show_rms, plans(name)")
+    .select(
+      "id, name, avatar_url, plan_id, start_date, gender, quote, " +
+      "birth_date, weight_kg, height_cm, athlete_since, athlete_level, " +
+      "discoverable, show_plan, show_avatar, show_rms, show_body_metrics, plans(name)",
+    )
     .eq("id", memberId)
     .maybeSingle()
 
   if (error) throw error
-  if (!member || !member.discoverable) {
+  if (!member) {
     throw new Error("Miembro no encontrado")
   }
 
-  const m = member as unknown as MemberRow
+  type FullRow = MemberRow & {
+    quote: string | null
+    birth_date: string | null
+    weight_kg: number | null
+    height_cm: number | null
+    athlete_since: string | null
+    athlete_level: string | null
+    show_body_metrics: boolean
+  }
+  const m = member as unknown as FullRow
+
+  if (!m.discoverable) {
+    throw new Error("Miembro no encontrado")
+  }
 
   const { data: records, error: recError } = await admin
     .from("personal_records")
@@ -304,9 +332,7 @@ export async function getMemberPublicProfile(memberId: string): Promise<MemberPu
 
   if (recError) throw recError
 
-  const recList: PersonalRecord[] = m.show_rms
-    ? ((records ?? []) as PersonalRecord[])
-    : []
+  const recList: PersonalRecord[] = m.show_rms ? ((records ?? []) as PersonalRecord[]) : []
 
   const recsMap: Record<string, number> = {}
   for (const r of recList) recsMap[r.movement] = Number(r.weight_kg)
@@ -321,12 +347,32 @@ export async function getMemberPublicProfile(memberId: string): Promise<MemberPu
         .map((r) => ({ movement: r.movement, weight_kg: Number(r.weight_kg) }))
     : []
 
+  const age = m.show_body_metrics && m.birth_date
+    ? (() => {
+        const d = new Date(m.birth_date + "T00:00:00")
+        if (Number.isNaN(d.getTime())) return null
+        const years = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+        return years >= 0 && years <= 120 ? years : null
+      })()
+    : null
+
+  const athlete_since_year = m.show_body_metrics && m.athlete_since
+    ? new Date(m.athlete_since + "T00:00:00").getFullYear()
+    : null
+
   return {
     id: m.id,
     name: m.name,
     avatar_url: m.show_avatar ? m.avatar_url : null,
     plan_name: m.show_plan && m.plans ? m.plans.name : null,
     start_date: m.start_date,
+    gender: (m.gender as "male" | "female" | null) ?? null,
+    quote: m.quote && m.quote.trim().length > 0 ? m.quote : null,
+    age,
+    weight_kg: m.show_body_metrics ? m.weight_kg : null,
+    height_cm: m.show_body_metrics ? m.height_cm : null,
+    athlete_since_year,
+    athlete_level: m.show_body_metrics ? (m.athlete_level as "rx" | "scaled" | "beginner" | null) : null,
     totals,
     top_records: topRecords,
     records: recList,
@@ -335,6 +381,7 @@ export async function getMemberPublicProfile(memberId: string): Promise<MemberPu
 
 export async function getTopByCategory(
   category: "grand" | "olympic" | "squat" | "press",
+  gender: "male" | "female",
 ): Promise<RankingEntry[]> {
   await ensureAuthenticated()
 
@@ -342,9 +389,10 @@ export async function getTopByCategory(
 
   const { data: members, error } = await admin
     .from("members")
-    .select("id, name, avatar_url, discoverable, show_rms, show_avatar")
+    .select("id, name, avatar_url, discoverable, show_rms, show_avatar, gender")
     .eq("discoverable", true)
     .eq("show_rms", true)
+    .eq("gender", gender)
 
   if (error) throw error
   if (!members || members.length === 0) return []
