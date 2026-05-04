@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getMyProfile, updateMyProfile, uploadAvatarToCloudinary, updateAvatar } from "@/lib/actions/portal"
+import { AthleteProfileForm } from "./AthleteProfileForm"
 
 const schema = z.object({
   name: z.string().min(2, "Mínimo 2 caracteres"),
@@ -167,6 +168,18 @@ export function DatosTab() {
             </form>
           </CardContent>
         </Card>
+
+        <AthleteProfileForm
+          initial={{
+            gender: profile?.gender ?? null,
+            birth_date: profile?.birth_date ?? null,
+            weight_kg: profile?.weight_kg ?? null,
+            height_cm: profile?.height_cm ?? null,
+            athlete_since: profile?.athlete_since ?? null,
+            athlete_level: profile?.athlete_level ?? null,
+            quote: profile?.quote ?? null,
+          }}
+        />
 
         <Card>
           <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
