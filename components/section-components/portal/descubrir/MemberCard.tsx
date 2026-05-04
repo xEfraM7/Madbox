@@ -4,21 +4,26 @@ import { Trophy } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import { getMovement, type MovementId } from "@/lib/constants/movements"
 import type { DiscoverableMember } from "@/lib/actions/records"
+import type { Gender } from "@/lib/constants/athlete"
 
 interface MemberCardProps {
   member: DiscoverableMember
+  gender: Gender
   onClick: () => void
 }
 
-export function MemberCard({ member, onClick }: MemberCardProps) {
+export function MemberCard({ member, gender, onClick }: MemberCardProps) {
   const initials = member.name
     .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
     .toUpperCase()
+
+  const ringClass = gender === "male" ? "ring-2 ring-blue-500/30" : "ring-2 ring-pink-500/30"
 
   return (
     <Card
@@ -27,7 +32,7 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
     >
       <CardContent className="py-4 sm:py-5 space-y-3">
         <div className="flex items-center gap-3">
-          <Avatar className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 border-2 border-primary/20">
+          <Avatar className={cn("h-12 w-12 sm:h-14 sm:w-14 shrink-0 border-2 border-primary/20", ringClass)}>
             <AvatarImage src={member.avatar_url ?? undefined} />
             <AvatarFallback className="bg-primary/20 text-primary text-sm font-bold">
               {initials}
