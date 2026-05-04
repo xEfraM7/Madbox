@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { getMyProfile } from "@/lib/actions/portal"
 import { TodayRoutineCard } from "./TodayRoutineCard"
+import { CompletarPerfilBanner } from "./CompletarPerfilBanner"
 
 const statusConfig = {
   active:  { label: "Activo",    color: "bg-green-900/50 text-green-400 border-green-700", accent: "border-green-800" },
@@ -50,6 +51,8 @@ export default function PortalHomeMainComponent() {
 
   return (
     <div className="space-y-5 sm:space-y-6">
+      {!profile.gender && <CompletarPerfilBanner />}
+
       {/* Greeting con avatar */}
       <div className="flex items-center gap-3 sm:gap-4">
         <Avatar className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 border-2 border-primary/30">
