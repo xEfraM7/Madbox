@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { getTopByCategory } from "@/lib/actions/records"
+import type { Gender } from "@/lib/constants/athlete"
 
 const POSITION_STYLES = [
   { ring: "ring-yellow-400", bg: "bg-yellow-400/10", label: "1°", scale: "scale-110" },
@@ -13,10 +14,14 @@ const POSITION_STYLES = [
   { ring: "ring-amber-700",  bg: "bg-amber-700/10",  label: "3°", scale: "" },
 ]
 
-export function RankingStrip() {
+interface Props {
+  gender: Gender
+}
+
+export function RankingStrip({ gender }: Props) {
   const { data: top = [], isLoading } = useQuery({
-    queryKey: ["discover-top", "grand"],
-    queryFn: () => getTopByCategory("grand"),
+    queryKey: ["discover-top", "grand", gender],
+    queryFn: () => getTopByCategory("grand", gender),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -32,24 +37,22 @@ export function RankingStrip() {
 
   if (top.length === 0) return null
 
+  const title = gender === "male" ? "Top Grand Total — Masculino" : "Top Grand Total — Femenino"
+
   return (
     <Card>
       <CardContent className="py-4 sm:py-5">
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="h-4 w-4 text-primary" />
           <p className="text-xs sm:text-sm font-semibold uppercase tracking-wide">
-            Top Grand Total
+            {title}
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {top.map((entry, i) => {
             const styles = POSITION_STYLES[i] ?? POSITION_STYLES[2]
             const initials = entry.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()
+              .split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
             return (
               <div
                 key={entry.member_id}
