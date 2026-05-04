@@ -129,6 +129,7 @@ export interface VisibilitySettings {
   show_avatar: boolean
   show_rms: boolean
   show_wods: boolean
+  show_body_metrics: boolean
 }
 
 export async function getMyVisibility(): Promise<VisibilitySettings> {
@@ -137,7 +138,7 @@ export async function getMyVisibility(): Promise<VisibilitySettings> {
 
   const { data, error } = await supabase
     .from("members")
-    .select("discoverable, show_plan, show_avatar, show_rms, show_wods")
+    .select("discoverable, show_plan, show_avatar, show_rms, show_wods, show_body_metrics")
     .eq("id", memberId)
     .single()
 
@@ -148,6 +149,7 @@ export async function getMyVisibility(): Promise<VisibilitySettings> {
     show_avatar: data.show_avatar ?? true,
     show_rms: data.show_rms ?? true,
     show_wods: data.show_wods ?? true,
+    show_body_metrics: data.show_body_metrics ?? false,
   }
 }
 

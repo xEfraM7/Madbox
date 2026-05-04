@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import { v2 as cloudinary } from "cloudinary"
+import { z } from "zod"
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -30,19 +31,62 @@ export async function getMyProfile() {
   return member
 }
 
-export async function updateMyProfile(data: {
-  name?: string
-  phone?: string
-  email?: string
-}) {
+const profileUpdateSchema = z.object({
+  name: z.string().min(2).max(100).optional(),
+  phone: z.string().max(40).optional(),
+  email: z.string().email().optional(),
+  gender: z.enum(["male", "female"]).nullable().optional(),
+  birth_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
+    .nullable()
+    .optional()
+    .refine((v) => {
+      if (!v) return true
+      const d = new Date(v + "T00:00:00")
+      const year = d.getFullYear()
+      return year >= 1940 && d.getTime() <= Date.now()
+    }, "Fecha fuera de rango"),
+  weight_kg: z.number().min(30).max(250).nullable().optional(),
+  height_cm: z.number().int().min(100).max(220).nullable().optional(),
+  athlete_since: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
+    .nullable()
+    .optional()
+    .refine((v) => {
+      if (!v) return true
+      const d = new Date(v + "T00:00:00")
+      return d.getFullYear() >= 2010 && d.getTime() <= Date.now()
+    }, "Fecha fuera de rango"),
+  athlete_level: z.enum(["rx", "scaled", "beginner"]).nullable().optional(),
+  quote: z
+    .string()
+    .max(120)
+    .transform((s) => s.replace(/<[^>]*>/g, "").trim())
+    .nullable()
+    .optional(),
+})
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>
+
+export async function updateMyProfile(data: ProfileUpdateInput) {
+  const parsed = profileUpdateSchema.parse(data)
   const { member, user, supabase } = await getCurrentMember()
 
-  const allowed = {
-    ...(data.name !== undefined && { name: data.name }),
-    ...(data.phone !== undefined && { phone: data.phone }),
-    ...(data.email !== undefined && { email: data.email }),
+  const allowed: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   }
+  if (parsed.name !== undefined) allowed.name = parsed.name
+  if (parsed.phone !== undefined) allowed.phone = parsed.phone
+  if (parsed.email !== undefined) allowed.email = parsed.email
+  if (parsed.gender !== undefined) allowed.gender = parsed.gender
+  if (parsed.birth_date !== undefined) allowed.birth_date = parsed.birth_date
+  if (parsed.weight_kg !== undefined) allowed.weight_kg = parsed.weight_kg
+  if (parsed.height_cm !== undefined) allowed.height_cm = parsed.height_cm
+  if (parsed.athlete_since !== undefined) allowed.athlete_since = parsed.athlete_since
+  if (parsed.athlete_level !== undefined) allowed.athlete_level = parsed.athlete_level
+  if (parsed.quote !== undefined) allowed.quote = parsed.quote
 
   const { error } = await supabase
     .from("members")
@@ -51,13 +95,13 @@ export async function updateMyProfile(data: {
 
   if (error) throw error
 
-  // Si cambió el email, actualizar en auth también (Supabase envía verificación)
-  if (data.email && data.email !== user.email) {
-    await supabase.auth.updateUser({ email: data.email })
+  if (parsed.email && parsed.email !== user.email) {
+    await supabase.auth.updateUser({ email: parsed.email })
   }
 
   revalidatePath("/portal/perfil")
   revalidatePath("/portal")
+  revalidatePath("/portal/descubrir")
 }
 
 export async function getMyPayments() {
