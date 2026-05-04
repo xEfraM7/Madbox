@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       activity_log: {
@@ -240,67 +215,91 @@ export type Database = {
       }
       members: {
         Row: {
+          athlete_level: string | null
+          athlete_since: string | null
           auth_user_id: string | null
           avatar_url: string | null
+          birth_date: string | null
           created_at: string | null
           discoverable: boolean
           email: string
           frozen: boolean | null
+          gender: string | null
+          height_cm: number | null
           id: string
           must_change_password: boolean | null
           name: string
           payment_date: string | null
           phone: string | null
           plan_id: string | null
+          quote: string | null
           show_avatar: boolean
+          show_body_metrics: boolean
           show_plan: boolean
           show_rms: boolean
           show_wods: boolean
           start_date: string | null
           status: string | null
           updated_at: string | null
+          weight_kg: number | null
         }
         Insert: {
+          athlete_level?: string | null
+          athlete_since?: string | null
           auth_user_id?: string | null
           avatar_url?: string | null
+          birth_date?: string | null
           created_at?: string | null
           discoverable?: boolean
           email: string
           frozen?: boolean | null
+          gender?: string | null
+          height_cm?: number | null
           id?: string
           must_change_password?: boolean | null
           name: string
           payment_date?: string | null
           phone?: string | null
           plan_id?: string | null
+          quote?: string | null
           show_avatar?: boolean
+          show_body_metrics?: boolean
           show_plan?: boolean
           show_rms?: boolean
           show_wods?: boolean
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
+          weight_kg?: number | null
         }
         Update: {
+          athlete_level?: string | null
+          athlete_since?: string | null
           auth_user_id?: string | null
           avatar_url?: string | null
+          birth_date?: string | null
           created_at?: string | null
           discoverable?: boolean
           email?: string
           frozen?: boolean | null
+          gender?: string | null
+          height_cm?: number | null
           id?: string
           must_change_password?: boolean | null
           name?: string
           payment_date?: string | null
           phone?: string | null
           plan_id?: string | null
+          quote?: string | null
           show_avatar?: boolean
+          show_body_metrics?: boolean
           show_plan?: boolean
           show_rms?: boolean
           show_wods?: boolean
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
+          weight_kg?: number | null
         }
         Relationships: [
           {
@@ -960,15 +959,11 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
 } as const
 
-// Monthly Closing types
 export interface MonthlyClosing {
   id: string
   period: string
