@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getMemberPublicProfile } from "@/lib/actions/records"
+import { ATHLETE_LEVEL_LABEL } from "@/lib/constants/athlete"
 import { getMemberRecentWods } from "@/lib/actions/wod-logs"
 import {
   FAMILY_LABEL,
@@ -93,6 +94,61 @@ export function MemberDetailModal({ memberId, onClose }: MemberDetailModalProps)
                 </div>
               </div>
             </div>
+
+            {(profile.age !== null ||
+              profile.weight_kg !== null ||
+              profile.height_cm !== null ||
+              profile.athlete_level !== null ||
+              profile.athlete_since_year !== null ||
+              profile.quote) && (
+              <div className="border rounded-lg p-3 sm:p-4 space-y-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Datos del atleta
+                </h3>
+                {(profile.age !== null ||
+                  profile.weight_kg !== null ||
+                  profile.height_cm !== null ||
+                  profile.athlete_level !== null) && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-center">
+                    {profile.age !== null && (
+                      <div>
+                        <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Edad</p>
+                        <p className="text-base font-semibold tabular-nums">{profile.age}</p>
+                        <p className="text-[10px] text-muted-foreground">años</p>
+                      </div>
+                    )}
+                    {profile.weight_kg !== null && (
+                      <div>
+                        <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Peso</p>
+                        <p className="text-base font-semibold tabular-nums">{Number(profile.weight_kg).toLocaleString("es-VE")}</p>
+                        <p className="text-[10px] text-muted-foreground">kg</p>
+                      </div>
+                    )}
+                    {profile.height_cm !== null && (
+                      <div>
+                        <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Altura</p>
+                        <p className="text-base font-semibold tabular-nums">{Number(profile.height_cm).toLocaleString("es-VE")}</p>
+                        <p className="text-[10px] text-muted-foreground">cm</p>
+                      </div>
+                    )}
+                    {profile.athlete_level !== null && (
+                      <div>
+                        <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Nivel</p>
+                        <p className="text-base font-semibold">{ATHLETE_LEVEL_LABEL[profile.athlete_level]}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {profile.athlete_since_year !== null && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Atleta desde {profile.athlete_since_year}
+                  </p>
+                )}
+                {profile.quote && (
+                  <p className="text-sm italic text-center pt-1">&ldquo;{profile.quote}&rdquo;</p>
+                )}
+              </div>
+            )}
 
             {profile.totals === null ? (
               <p className="text-sm text-muted-foreground text-center py-6">
