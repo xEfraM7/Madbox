@@ -41,6 +41,11 @@ const TOGGLES: Array<{
     desc: "Tus marcas serán visibles en tu card y contarán para los rankings.",
   },
   {
+    key: "show_body_metrics",
+    title: "Mostrar datos físicos",
+    desc: "Otros verán tu edad, peso, altura, nivel y desde cuándo entrenas. Tu fecha de nacimiento exacta nunca se muestra.",
+  },
+  {
     key: "show_wods",
     title: "Mostrar mis WODs",
     desc: "Tus registros de WOD aparecerán en leaderboards y en tu perfil público.",
