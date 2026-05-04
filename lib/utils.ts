@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { differenceInYears } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -46,4 +47,17 @@ export function calculateDueDate(paymentDate: string): string {
 export function isDayClosed(openTime: string | null, closeTime: string | null): boolean {
   if (!openTime || !closeTime) return false
   return openTime === closeTime
+}
+
+/**
+ * Calcula edad en años redondeados desde una fecha de nacimiento (string ISO YYYY-MM-DD).
+ * Devuelve null si la fecha es inválida o futura.
+ */
+export function calculateAge(birthDate: string | null | undefined): number | null {
+  if (!birthDate) return null
+  const date = new Date(birthDate + "T00:00:00")
+  if (Number.isNaN(date.getTime())) return null
+  const years = differenceInYears(new Date(), date)
+  if (years < 0 || years > 120) return null
+  return years
 }
