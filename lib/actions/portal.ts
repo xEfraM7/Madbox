@@ -4,6 +4,9 @@ import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import { v2 as cloudinary } from "cloudinary"
 import { z } from "zod"
+import { calculateTotals, MOVEMENTS } from "@/lib/constants/movements"
+import type { MovementId } from "@/lib/constants/movements"
+import type { Gender, AthleteLevel } from "@/lib/constants/athlete"
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -178,6 +181,81 @@ export async function uploadAvatarToCloudinary(formData: FormData): Promise<stri
   })
 
   return result.secure_url
+}
+
+export interface AthleteCardData {
+  name: string
+  avatarUrl: string | null
+  planName: string | null
+  gender: Gender
+  age: number | null
+  weightKg: number | null
+  heightCm: number | null
+  athleteSinceYear: number | null
+  athleteLevel: AthleteLevel | null
+  quote: string | null
+  totals: { grand: number; olympic: number; squat: number; press: number }
+  topRecords: Array<{ movement: MovementId; label: string; weightKg: number }>
+}
+
+export async function getMyAthleteCardData(): Promise<AthleteCardData> {
+  const { member, supabase } = await getCurrentMember()
+
+  if (!member.gender) {
+    throw new Error("Completa tu género en el perfil para generar tu ficha.")
+  }
+
+  const { data: records, error: recError } = await supabase
+    .from("personal_records")
+    .select("movement, weight_kg")
+    .eq("member_id", member.id)
+
+  if (recError) throw recError
+  if (!records || records.length === 0) {
+    throw new Error("Registra al menos una marca para generar tu ficha.")
+  }
+
+  const recsMap: Record<string, number> = {}
+  for (const r of records) recsMap[r.movement] = Number(r.weight_kg)
+
+  const totals = calculateTotals(recsMap as Record<MovementId, number>)
+
+  const topRecords = MOVEMENTS
+    .map((mv) => ({
+      movement: mv.id,
+      label: mv.label,
+      weightKg: recsMap[mv.id] ?? 0,
+    }))
+    .filter((r) => r.weightKg > 0)
+    .sort((a, b) => b.weightKg - a.weightKg)
+    .slice(0, 6)
+
+  const planRow = member.plans as { name: string } | null
+  const age = member.birth_date
+    ? (() => {
+        const d = new Date(member.birth_date + "T00:00:00")
+        if (Number.isNaN(d.getTime())) return null
+        const years = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+        return years >= 0 && years <= 120 ? years : null
+      })()
+    : null
+
+  return {
+    name: member.name,
+    avatarUrl: member.avatar_url ?? null,
+    planName: planRow?.name ?? null,
+    gender: member.gender as Gender,
+    age,
+    weightKg: member.weight_kg !== null && member.weight_kg !== undefined ? Number(member.weight_kg) : null,
+    heightCm: member.height_cm !== null && member.height_cm !== undefined ? Number(member.height_cm) : null,
+    athleteSinceYear: member.athlete_since
+      ? new Date(member.athlete_since + "T00:00:00").getFullYear()
+      : null,
+    athleteLevel: (member.athlete_level as AthleteLevel | null) ?? null,
+    quote: member.quote && member.quote.trim().length > 0 ? member.quote : null,
+    totals,
+    topRecords,
+  }
 }
 
 export async function clearMustChangePassword() {
