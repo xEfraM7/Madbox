@@ -6,6 +6,7 @@ import type { MovementId } from "@/lib/constants/movements"
 import { getMovement, calculateTotals, MOVEMENTS } from "@/lib/constants/movements"
 import { logActivity } from "./activity"
 import { createAdminClient } from "@/utils/supabase/admin"
+import { calculateAge } from "@/lib/utils"
 
 // ─── Helper: obtener member_id del usuario autenticado ────
 
@@ -347,14 +348,7 @@ export async function getMemberPublicProfile(memberId: string): Promise<MemberPu
         .map((r) => ({ movement: r.movement, weight_kg: Number(r.weight_kg) }))
     : []
 
-  const age = m.show_body_metrics && m.birth_date
-    ? (() => {
-        const d = new Date(m.birth_date + "T00:00:00")
-        if (Number.isNaN(d.getTime())) return null
-        const years = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25))
-        return years >= 0 && years <= 120 ? years : null
-      })()
-    : null
+  const age = m.show_body_metrics ? calculateAge(m.birth_date) : null
 
   const athlete_since_year = m.show_body_metrics && m.athlete_since
     ? new Date(m.athlete_since + "T00:00:00").getFullYear()

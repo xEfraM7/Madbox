@@ -7,6 +7,7 @@ import { z } from "zod"
 import { calculateTotals, MOVEMENTS } from "@/lib/constants/movements"
 import type { MovementId } from "@/lib/constants/movements"
 import type { Gender, AthleteLevel } from "@/lib/constants/athlete"
+import { calculateAge } from "@/lib/utils"
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -231,14 +232,7 @@ export async function getMyAthleteCardData(): Promise<AthleteCardData> {
     .slice(0, 6)
 
   const planRow = member.plans as { name: string } | null
-  const age = member.birth_date
-    ? (() => {
-        const d = new Date(member.birth_date + "T00:00:00")
-        if (Number.isNaN(d.getTime())) return null
-        const years = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25))
-        return years >= 0 && years <= 120 ? years : null
-      })()
-    : null
+  const age = calculateAge(member.birth_date)
 
   return {
     name: member.name,
@@ -246,8 +240,8 @@ export async function getMyAthleteCardData(): Promise<AthleteCardData> {
     planName: planRow?.name ?? null,
     gender: member.gender as Gender,
     age,
-    weightKg: member.weight_kg !== null && member.weight_kg !== undefined ? Number(member.weight_kg) : null,
-    heightCm: member.height_cm !== null && member.height_cm !== undefined ? Number(member.height_cm) : null,
+    weightKg: member.weight_kg != null ? Number(member.weight_kg) : null,
+    heightCm: member.height_cm != null ? Number(member.height_cm) : null,
     athleteSinceYear: member.athlete_since
       ? new Date(member.athlete_since + "T00:00:00").getFullYear()
       : null,
