@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import { v2 as cloudinary } from "cloudinary"
 import { z } from "zod"
-import { calculateTotals, MOVEMENTS } from "@/lib/constants/movements"
+import { calculateTotals, OLYMPIC_DISPLAY_MOVEMENTS, OLYMPIC_DISPLAY_LABEL } from "@/lib/constants/movements"
 import type { MovementId } from "@/lib/constants/movements"
 import type { Gender, AthleteLevel } from "@/lib/constants/athlete"
 import { calculateAge } from "@/lib/utils"
@@ -221,15 +221,13 @@ export async function getMyAthleteCardData(): Promise<AthleteCardData> {
 
   const totals = calculateTotals(recsMap as Record<MovementId, number>)
 
-  const topRecords = MOVEMENTS
-    .map((mv) => ({
-      movement: mv.id,
-      label: mv.label,
-      weightKg: recsMap[mv.id] ?? 0,
-    }))
-    .filter((r) => r.weightKg > 0)
-    .sort((a, b) => b.weightKg - a.weightKg)
-    .slice(0, 6)
+  // Siempre los 3 levantamientos olímpicos destacados, en orden fijo.
+  // weightKg = 0 indica que el miembro no tiene esa marca registrada.
+  const topRecords = OLYMPIC_DISPLAY_MOVEMENTS.map((mv) => ({
+    movement: mv,
+    label: OLYMPIC_DISPLAY_LABEL[mv],
+    weightKg: recsMap[mv] ?? 0,
+  }))
 
   const planRow = member.plans as { name: string } | null
   const age = calculateAge(member.birth_date)
