@@ -111,6 +111,33 @@ export async function updateAdmin(id: string, admin: TablesUpdate<"admins">) {
   if (!hasPermission) throw new Error("No tienes permisos para editar administradores")
 
   const supabase = await createClient()
+
+  if (admin.email) {
+    const { data: current, error: currentError } = await supabase
+      .from("admins")
+      .select("auth_user_id, email")
+      .eq("id", id)
+      .single()
+
+    if (currentError) throw currentError
+
+    const newEmail = admin.email.trim().toLowerCase()
+    const oldEmail = (current?.email || "").trim().toLowerCase()
+
+    if (current?.auth_user_id && newEmail !== oldEmail) {
+      const adminClient = createAdminClient()
+      const { error: authError } = await adminClient.auth.admin.updateUserById(
+        current.auth_user_id,
+        { email: newEmail, email_confirm: true }
+      )
+      if (authError) {
+        throw new Error(
+          `No se pudo sincronizar el email en auth.users: ${authError.message}`
+        )
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("admins")
     .update({ ...admin, updated_at: new Date().toISOString() })
