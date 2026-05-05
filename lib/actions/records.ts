@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { MovementId } from "@/lib/constants/movements"
-import { getMovement, calculateTotals, MOVEMENTS } from "@/lib/constants/movements"
+import { getMovement, calculateTotals, OLYMPIC_DISPLAY_MOVEMENTS } from "@/lib/constants/movements"
 import { logActivity } from "./activity"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { calculateAge } from "@/lib/utils"
@@ -272,11 +272,10 @@ export async function getDiscoverableMembers(
     const totals = m.show_rms ? calculateTotals(rms) : null
 
     const topRecords = m.show_rms
-      ? MOVEMENTS
-          .map((mv) => ({ movement: mv.id, weight_kg: rms[mv.id] ?? 0 }))
-          .filter((r) => r.weight_kg > 0)
-          .sort((a, b) => b.weight_kg - a.weight_kg)
-          .slice(0, 3)
+      ? OLYMPIC_DISPLAY_MOVEMENTS.map((mv) => ({
+          movement: mv,
+          weight_kg: rms[mv] ?? 0,
+        }))
       : []
 
     return {
@@ -341,11 +340,10 @@ export async function getMemberPublicProfile(memberId: string): Promise<MemberPu
   const totals = m.show_rms ? calculateTotals(recsMap) : null
 
   const topRecords = m.show_rms
-    ? recList
-        .filter((r) => Number(r.weight_kg) > 0)
-        .sort((a, b) => Number(b.weight_kg) - Number(a.weight_kg))
-        .slice(0, 3)
-        .map((r) => ({ movement: r.movement, weight_kg: Number(r.weight_kg) }))
+    ? OLYMPIC_DISPLAY_MOVEMENTS.map((mv) => ({
+        movement: mv,
+        weight_kg: recsMap[mv] ?? 0,
+      }))
     : []
 
   const age = m.show_body_metrics ? calculateAge(m.birth_date) : null

@@ -19,6 +19,8 @@ import {
   FAMILY_LABEL,
   FAMILY_ORDER,
   getMovementsByFamily,
+  OLYMPIC_DISPLAY_MOVEMENTS,
+  OLYMPIC_DISPLAY_LABEL,
 } from "@/lib/constants/movements"
 import { TotalsStrip } from "../perfil/totals-strip"
 import { Flame } from "lucide-react"
@@ -157,6 +159,30 @@ export function MemberDetailModal({ memberId, onClose }: MemberDetailModalProps)
             ) : (
               <>
                 <TotalsStrip totals={profile.totals} />
+
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 sm:p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-primary mb-3 text-center">
+                    Levantamientos Olímpicos
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
+                    {OLYMPIC_DISPLAY_MOVEMENTS.map((mv) => {
+                      const w = recordsByMovement[mv]
+                      return (
+                        <div key={mv}>
+                          <p className="text-[10px] sm:text-xs uppercase text-muted-foreground tracking-wide font-semibold">
+                            {OLYMPIC_DISPLAY_LABEL[mv]}
+                          </p>
+                          <p className="text-2xl sm:text-3xl font-extrabold text-primary tabular-nums mt-1">
+                            {w !== undefined && w > 0 ? w.toLocaleString("es-VE") : "—"}
+                          </p>
+                          {w !== undefined && w > 0 && (
+                            <p className="text-[10px] text-muted-foreground tracking-wide">kg</p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
 
                 <div className="space-y-3">
                   {FAMILY_ORDER.map((family) => {

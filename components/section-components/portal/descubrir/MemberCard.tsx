@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { getMovement, type MovementId } from "@/lib/constants/movements"
+import { OLYMPIC_DISPLAY_LABEL, type MovementId } from "@/lib/constants/movements"
 import type { DiscoverableMember } from "@/lib/actions/records"
 import type { Gender } from "@/lib/constants/athlete"
 
@@ -59,7 +59,9 @@ export function MemberCard({ member, gender, onClick }: MemberCardProps) {
           </div>
         )}
 
-        {member.top_records.length > 0 ? (
+        {member.totals === null ? (
+          <p className="text-xs text-muted-foreground italic pt-1">Marcas privadas</p>
+        ) : member.top_records.length > 0 ? (
           <ul className="space-y-1 pt-1">
             {member.top_records.map((r) => (
               <li
@@ -67,17 +69,17 @@ export function MemberCard({ member, gender, onClick }: MemberCardProps) {
                 className="flex items-center justify-between gap-2 text-xs"
               >
                 <span className="text-muted-foreground truncate">
-                  {getMovement(r.movement as MovementId).label}
+                  {OLYMPIC_DISPLAY_LABEL[r.movement as MovementId]}
                 </span>
                 <span className="font-semibold tabular-nums shrink-0">
-                  {r.weight_kg.toLocaleString("es-VE")} kg
+                  {r.weight_kg > 0 ? `${r.weight_kg.toLocaleString("es-VE")} kg` : "—"}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
           <p className="text-xs text-muted-foreground italic pt-1">
-            {member.totals === null ? "Marcas privadas" : "Sin marcas registradas"}
+            Sin marcas registradas
           </p>
         )}
       </CardContent>

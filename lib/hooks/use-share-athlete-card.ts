@@ -39,11 +39,29 @@ export function useShareAthleteCard() {
 
   async function captureAndShare(node: HTMLElement, name: string): Promise<void> {
     await waitForImagesLoaded(node)
+    if (typeof document !== "undefined" && (document as any).fonts?.ready) {
+      try {
+        await (document as any).fonts.ready
+      } catch {
+        /* noop */
+      }
+    }
 
     const blob = await toBlob(node, {
       pixelRatio: 2,
       cacheBust: true,
       backgroundColor: "#0a0a0a",
+      // El nodo se monta off-screen con position:fixed; left:-99999px para no
+      // interferir con la UI. Pero esos estilos se clonan dentro del
+      // <foreignObject> del SVG y empujan el contenido fuera del viewBox.
+      // Reseteamos posición/z-index sobre el clon para que renderice en (0,0).
+      style: {
+        position: "static",
+        left: "0",
+        top: "0",
+        margin: "0",
+        zIndex: "auto",
+      },
     })
 
     if (!blob) throw new Error("No se pudo generar la imagen")

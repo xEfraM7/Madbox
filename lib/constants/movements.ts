@@ -47,6 +47,22 @@ export const FAMILY_LABEL: Record<MovementFamily, string> = {
 
 export const FAMILY_ORDER: MovementFamily[] = ['olympic', 'squat', 'press', 'pull', 'hybrid']
 
+// Los 3 levantamientos olímpicos destacados en la ficha de atleta y en
+// las tarjetas de Descubrir. Orden fijo y explícito (no "top por peso").
+export const OLYMPIC_DISPLAY_MOVEMENTS: MovementId[] = [
+  'snatch',
+  'clean_and_jerk',
+  'split_jerk',
+]
+
+// Etiqueta corta para mostrar en contextos compactos (ej. "Jerk" en vez
+// de "Split Jerk" cuando ya está en una sección de levantamientos).
+export const OLYMPIC_DISPLAY_LABEL: Record<MovementId, string> = {
+  snatch: 'Snatch',
+  clean_and_jerk: 'Clean & Jerk',
+  split_jerk: 'Jerk',
+} as Record<MovementId, string>
+
 export function getMovement(id: MovementId): Movement {
   const m = MOVEMENTS.find((x) => x.id === id)
   if (!m) throw new Error(`Unknown movement: ${id}`)
