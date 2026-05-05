@@ -141,36 +141,6 @@ export type Database = {
         }
         Relationships: []
       }
-      gym_schedule: {
-        Row: {
-          afternoon_close: string | null
-          afternoon_open: string | null
-          close_time: string
-          created_at: string | null
-          day_of_week: string
-          id: string
-          open_time: string
-        }
-        Insert: {
-          afternoon_close?: string | null
-          afternoon_open?: string | null
-          close_time: string
-          created_at?: string | null
-          day_of_week: string
-          id?: string
-          open_time: string
-        }
-        Update: {
-          afternoon_close?: string | null
-          afternoon_open?: string | null
-          close_time?: string
-          created_at?: string | null
-          day_of_week?: string
-          id?: string
-          open_time?: string
-        }
-        Relationships: []
-      }
       gym_settings: {
         Row: {
           address: string | null
@@ -600,71 +570,59 @@ export type Database = {
         }
         Relationships: []
       }
-      routine_assignments: {
+      routine_schedule_plans: {
         Row: {
-          created_at: string | null
-          day_of_week: string
-          id: string
           plan_id: string
-          routine_id: string
-          updated_at: string | null
+          schedule_id: string
         }
         Insert: {
-          created_at?: string | null
-          day_of_week: string
-          id?: string
           plan_id: string
-          routine_id: string
-          updated_at?: string | null
+          schedule_id: string
         }
         Update: {
-          created_at?: string | null
-          day_of_week?: string
-          id?: string
           plan_id?: string
-          routine_id?: string
-          updated_at?: string | null
+          schedule_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "routine_assignments_plan_id_fkey"
+            foreignKeyName: "routine_schedule_plans_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "plans"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "routine_assignments_routine_id_fkey"
-            columns: ["routine_id"]
+            foreignKeyName: "routine_schedule_plans_schedule_id_fkey"
+            columns: ["schedule_id"]
             isOneToOne: false
-            referencedRelation: "routines"
+            referencedRelation: "routine_schedules"
             referencedColumns: ["id"]
           },
         ]
       }
-      routines: {
+      routine_schedules: {
         Row: {
-          blocks: Json
           content: string
           created_at: string | null
+          date: string
           id: string
-          name: string
+          name: string | null
           updated_at: string | null
         }
         Insert: {
-          blocks?: Json
           content?: string
           created_at?: string | null
+          date: string
           id?: string
-          name: string
+          name?: string | null
           updated_at?: string | null
         }
         Update: {
-          blocks?: Json
           content?: string
           created_at?: string | null
+          date?: string
           id?: string
-          name?: string
+          name?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -820,7 +778,7 @@ export type Database = {
             foreignKeyName: "wod_logs_routine_id_fkey"
             columns: ["routine_id"]
             isOneToOne: false
-            referencedRelation: "routines"
+            referencedRelation: "routine_schedules"
             referencedColumns: ["id"]
           },
         ]
@@ -963,67 +921,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
-export interface MonthlyClosing {
-  id: string
-  period: string
-
-  // Ingresos membresías
-  membership_revenue_bs: number
-  membership_revenue_usd_cash: number
-  membership_revenue_usdt: number
-  membership_payments_count: number
-
-  // Ingresos clases
-  class_revenue_bs: number
-  class_revenue_usd_cash: number
-  class_revenue_usdt: number
-  class_payments_count: number
-
-  // Total USD
-  total_revenue_usd: number
-
-  // Métricas miembros
-  active_members: number
-  new_members: number
-  expired_members: number
-  frozen_members: number
-  total_members: number
-  retention_rate: number
-
-  // Fondos
-  funds_bs: number
-  funds_usd_cash: number
-  funds_usdt: number
-  funds_reset: boolean
-
-  // Tasas
-  rate_bcv: number
-  rate_usdt: number
-  rate_custom: number
-
-  // Metadata
-  closed_by: string | null
-  closed_at: string
-  notes: string | null
-  created_at: string
-
-  // Relaciones
-  admin?: { name: string }
-}
-
-export interface MonthlyClosingPreview {
-  period: string
-  membership_revenue: { bs: number; usd_cash: number; usdt: number; count: number }
-  class_revenue: { bs: number; usd_cash: number; usdt: number; count: number }
-  total_revenue_usd: number
-  members: { active: number; new: number; expired: number; frozen: number; total: number; retention: number }
-  funds: { bs: number; usd_cash: number; usdt: number }
-  rates: { bcv: number; usdt: number; custom: number }
-}
-
-export interface PendingPeriod {
-  period: string
-  label: string
-  isOldest: boolean
-}
