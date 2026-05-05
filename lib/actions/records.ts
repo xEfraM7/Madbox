@@ -173,16 +173,13 @@ export async function updateMyVisibility(
 
 // ─── Discover (cross-member) ─────────────────────────────
 
-export interface DiscoverableMember {
+export interface MemberPublicProfile {
   id: string
   name: string
   avatar_url: string | null
   plan_name: string | null
   totals: { grand: number; olympic: number; squat: number; press: number } | null
   top_records: Array<{ movement: MovementId; weight_kg: number }>
-}
-
-export interface MemberPublicProfile extends DiscoverableMember {
   start_date: string | null
   records: PersonalRecord[]
   gender: "male" | "female" | null
@@ -228,65 +225,6 @@ interface RecordRow {
   achieved_at: string | null
   id: string
   updated_at: string | null
-}
-
-export async function getDiscoverableMembers(
-  options: { gender: "male" | "female"; search?: string },
-): Promise<DiscoverableMember[]> {
-  await ensureAuthenticated()
-
-  const admin = createAdminClient()
-
-  let query = admin
-    .from("members")
-    .select("id, name, avatar_url, plan_id, start_date, gender, discoverable, show_plan, show_avatar, show_rms, plans(name)")
-    .eq("discoverable", true)
-    .eq("gender", options.gender)
-    .order("name", { ascending: true })
-
-  if (options.search && options.search.trim().length > 0) {
-    query = query.ilike("name", `%${options.search.trim()}%`)
-  }
-
-  const { data: members, error } = await query
-  if (error) throw error
-  if (!members || members.length === 0) return []
-
-  const memberIds = members.map((m) => m.id)
-
-  const { data: records, error: recError } = await admin
-    .from("personal_records")
-    .select("member_id, movement, weight_kg")
-    .in("member_id", memberIds)
-
-  if (recError) throw recError
-
-  const recordsByMember: Record<string, Record<MovementId, number>> = {}
-  for (const r of (records ?? []) as Array<Pick<RecordRow, "member_id" | "movement" | "weight_kg">>) {
-    recordsByMember[r.member_id] ??= {} as Record<MovementId, number>
-    recordsByMember[r.member_id][r.movement] = Number(r.weight_kg)
-  }
-
-  return (members as unknown as MemberRow[]).map((m) => {
-    const rms = recordsByMember[m.id] ?? ({} as Record<MovementId, number>)
-    const totals = m.show_rms ? calculateTotals(rms) : null
-
-    const topRecords = m.show_rms
-      ? OLYMPIC_DISPLAY_MOVEMENTS.map((mv) => ({
-          movement: mv,
-          weight_kg: rms[mv] ?? 0,
-        }))
-      : []
-
-    return {
-      id: m.id,
-      name: m.name,
-      avatar_url: m.show_avatar ? m.avatar_url : null,
-      plan_name: m.show_plan && m.plans ? m.plans.name : null,
-      totals,
-      top_records: topRecords,
-    }
-  })
 }
 
 export async function getMemberPublicProfile(memberId: string): Promise<MemberPublicProfile> {
@@ -374,6 +312,7 @@ export async function getMemberPublicProfile(memberId: string): Promise<MemberPu
 export async function getTopByCategory(
   category: "grand" | "olympic" | "squat" | "press",
   gender: "male" | "female",
+  limit: number = 3,
 ): Promise<RankingEntry[]> {
   await ensureAuthenticated()
 
@@ -417,7 +356,7 @@ export async function getTopByCategory(
     })
     .filter((e) => e.total_kg > 0)
     .sort((a, b) => b.total_kg - a.total_kg)
-    .slice(0, 3)
+    .slice(0, limit)
 
   return entries
 }

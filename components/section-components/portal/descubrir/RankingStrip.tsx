@@ -16,9 +16,10 @@ const POSITION_STYLES = [
 
 interface Props {
   gender: Gender
+  onSelect?: (memberId: string) => void
 }
 
-export function RankingStrip({ gender }: Props) {
+export function RankingStrip({ gender, onSelect }: Props) {
   const { data: top = [], isLoading } = useQuery({
     queryKey: ["discover-top", "grand", gender],
     queryFn: () => getTopByCategory("grand", gender),
@@ -52,13 +53,17 @@ export function RankingStrip({ gender }: Props) {
           {top.map((entry, i) => {
             const styles = POSITION_STYLES[i] ?? POSITION_STYLES[2]
             const initials = entry.name
-              .split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+              .split(" ").map((n) => n.charAt(0)).join("").slice(0, 2).toUpperCase()
             return (
-              <div
+              <button
+                type="button"
                 key={entry.member_id}
+                onClick={() => onSelect?.(entry.member_id)}
+                disabled={!onSelect}
                 className={cn(
-                  "flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-lg",
+                  "flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-lg w-full text-left",
                   styles.bg,
+                  onSelect && "transition-colors hover:bg-muted/40 cursor-pointer",
                 )}
               >
                 <Avatar
@@ -83,7 +88,7 @@ export function RankingStrip({ gender }: Props) {
                   {entry.total_kg.toLocaleString("es-VE")}
                   <span className="text-[10px] font-normal text-muted-foreground ml-0.5">kg</span>
                 </p>
-              </div>
+              </button>
             )
           })}
         </div>
