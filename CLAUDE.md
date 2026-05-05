@@ -76,7 +76,7 @@ middleware.ts            # Auth gate de Next: redirige a /login si no hay user
 - Client-side: usar `usePermissions()` de `@/lib/hooks/use-permissions`.
   - Patrón: `if (!hasPermission('payments.edit')) ocultar/disabled`.
   - El admin con flag `isAdmin` tiene todos los permisos.
-- Permisos disponibles: `dashboard.view`, `users.{view,edit,delete}`, `plans.{view,edit,delete}`, `payments.{view,edit,delete}`, `classes.{view,edit,delete}`, `roles.{view,create,edit,delete}`, `settings.{view,edit}`, `closings.{view,edit,delete}`, `schedule.{view,edit,delete}`.
+- Permisos disponibles: `dashboard.view`, `users.{view,edit,delete}`, `plans.{view,edit,delete}`, `payments.{view,edit,delete}`, `classes.{view,edit,delete}`, `roles.{view,create,edit,delete}`, `settings.{view,edit}`, `closings.{view,edit,delete}`, `routines.{view,edit,delete}`.
 
 ### 5. TanStack Query
 - `QueryProvider` ya está montado en `app/layout.tsx` con `staleTime: 60s` y `refetchOnWindowFocus: false`.
@@ -106,8 +106,9 @@ middleware.ts            # Auth gate de Next: redirige a /login si no hay user
 | `special_classes` | Clases con `instructor`, `schedule`, `price`, `capacity`, `enrolled` |
 | `special_class_payments` | FK `class_id`, `member_id` |
 | `roles` | `permissions[]` (string[] con los permisos listados arriba) |
+| `routine_schedules` | Una rutina por fecha (markdown). FK a `plans` vía `routine_schedule_plans` |
+| `routine_schedule_plans` | Tabla puente M2M: una rutina puede aplicar a varios planes |
 | `gym_settings` | Singleton de configuración |
-| `gym_schedule` | Horarios por `day_of_week` |
 | `monthly_closings` | Snapshot mensual: ingresos, miembros, fondos, tasas, notas |
 
 **Estado de miembros**: `getMembers()` ejecuta `updateMemberStatuses()` antes de leer — marca `expired`/`active` según `payment_date` vs hoy, ignorando `frozen`.
