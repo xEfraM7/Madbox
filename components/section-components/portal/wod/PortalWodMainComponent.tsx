@@ -1,22 +1,25 @@
 "use client"
 
-import { TodayWodHeader } from "./TodayWodHeader"
-import { WodLeaderboard } from "./WodLeaderboard"
-import { WodHistoryList } from "./WodHistoryList"
+import { Construction } from "lucide-react"
 
 export default function PortalWodMainComponent() {
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold">WOD</h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-          Registra tu resultado y mira el leaderboard del día
+        <h1 className="text-2xl font-bold tracking-tight">WOD</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Registro de WODs y leaderboard.
         </p>
       </div>
-
-      <TodayWodHeader />
-      <WodLeaderboard />
-      <WodHistoryList />
+      <div className="rounded-xl border border-dashed p-10 text-center space-y-3">
+        <Construction className="h-10 w-10 mx-auto text-muted-foreground" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Sección en construcción</p>
+          <p className="text-xs text-muted-foreground">
+            Estamos migrando el modelo de rutinas. El registro de WODs volverá pronto.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
