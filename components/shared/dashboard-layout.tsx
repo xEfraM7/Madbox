@@ -27,7 +27,7 @@ const navigation = [
   { name: "Pagos", href: "/dashboard/payments", icon: DollarSign, permissions: ["payments.view"] },
   { name: "Clases Especiales", href: "/dashboard/classes", icon: Calendar, permissions: ["classes.view"] },
   { name: "Cierres", href: "/dashboard/closings", icon: CalendarCheck, permissions: ["closings.view"] },
-  { name: "Horarios", href: "/dashboard/horarios", icon: CalendarClock, permissions: ["schedule.view"] },
+  { name: "Rutinas", href: "/dashboard/rutinas", icon: CalendarClock, permissions: ["routines.view"] },
   { name: "Configuración", href: "/dashboard/settings", icon: Settings, permissions: ["settings.view"] },
 ]
 
