@@ -25,7 +25,7 @@ import { getMonthlyClosings, getCurrentMonthPreview, getPendingPeriods } from "@
 import { CloseMonthModal } from "./modals/close-month-modal"
 import { ClosingDetailModal } from "./modals/closing-detail-modal"
 import { PendingClosingsBanner } from "./pending-closings-banner"
-import type { MonthlyClosing } from "@/types/database"
+import type { MonthlyClosing } from "@/lib/actions/closings"
 
 export default function ClosingsMainComponent() {
   const { hasPermission } = usePermissions()

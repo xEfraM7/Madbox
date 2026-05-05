@@ -3,7 +3,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Calendar, ChevronRight } from "lucide-react"
-import type { PendingPeriod } from "@/types/database"
+import type { PendingPeriod } from "@/lib/actions/closings"
 
 interface PendingClosingsBannerProps {
     pendingPeriods: PendingPeriod[]

@@ -25,7 +25,7 @@ import {
 } from "lucide-react"
 import { exportMonthlyClosing } from "@/lib/actions/closings"
 import { showToast } from "@/lib/sweetalert"
-import type { MonthlyClosing } from "@/types/database"
+import type { MonthlyClosing } from "@/lib/actions/closings"
 
 interface ClosingDetailModalProps {
   open: boolean

@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, AlertTriangle, CheckCircle2, Banknote, Bitcoin, DollarSign } from "lucide-react"
 import { createMonthlyClosing } from "@/lib/actions/closings"
 import { showToast } from "@/lib/sweetalert"
-import type { MonthlyClosingPreview } from "@/types/database"
+import type { MonthlyClosingPreview } from "@/lib/actions/closings"
 
 interface CloseMonthModalProps {
   open: boolean

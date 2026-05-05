@@ -2,8 +2,55 @@
 
 import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
-import type { MonthlyClosing, MonthlyClosingPreview, PendingPeriod } from "@/types/database"
 import { logActivity } from "./activity"
+
+export interface MonthlyClosing {
+  id: string
+  period: string
+  membership_revenue_bs: number
+  membership_revenue_usd_cash: number
+  membership_revenue_usdt: number
+  membership_payments_count: number
+  class_revenue_bs: number
+  class_revenue_usd_cash: number
+  class_revenue_usdt: number
+  class_payments_count: number
+  total_revenue_usd: number
+  active_members: number
+  new_members: number
+  expired_members: number
+  frozen_members: number
+  total_members: number
+  retention_rate: number
+  funds_bs: number
+  funds_usd_cash: number
+  funds_usdt: number
+  funds_reset: boolean
+  rate_bcv: number
+  rate_usdt: number
+  rate_custom: number
+  closed_by: string | null
+  closed_at: string
+  notes: string | null
+  created_at: string
+  admin?: { name: string }
+}
+
+export interface MonthlyClosingPreview {
+  period: string
+  membership_revenue: { bs: number; usd_cash: number; usdt: number; count: number }
+  class_revenue: { bs: number; usd_cash: number; usdt: number; count: number }
+  total_revenue_usd: number
+  members: { active: number; new: number; expired: number; frozen: number; total: number; retention: number }
+  funds: { bs: number; usd_cash: number; usdt: number }
+  rates: { bcv: number; usdt: number; custom: number }
+}
+
+export interface PendingPeriod {
+  period: string
+  label: string
+  isOldest: boolean
+}
 
 /**
  * Get all monthly closings ordered by period descending
