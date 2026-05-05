@@ -26,33 +26,3 @@ export async function updateGymSettings(id: string, settings: TablesUpdate<"gym_
   return data
 }
 
-export async function getGymSchedule() {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("gym_schedule")
-    .select("*")
-    .order("id")
-
-  if (error) throw error
-  return data
-}
-
-export async function updateGymSchedule(
-  id: string,
-  schedule: {
-    open_time: string
-    close_time: string
-    afternoon_open?: string | null
-    afternoon_close?: string | null
-  },
-) {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from("gym_schedule")
-    .update(schedule)
-    .eq("id", id)
-
-  if (error) throw error
-  revalidatePath("/dashboard/horarios")
-  revalidatePath("/dashboard/settings")
-}

@@ -14,6 +14,7 @@ export type ActivityAction =
   | "monthly_closing_created" | "funds_reset"
   | "routine_created" | "routine_updated" | "routine_deleted"
   | "routine_assigned" | "routine_unassigned"
+  | "routine_scheduled" | "routine_schedule_updated" | "routine_schedule_deleted"
   | "schedule_updated"
   | "pr_updated" | "pr_deleted"
   | "wod_logged" | "wod_deleted"
@@ -22,7 +23,7 @@ export type EntityType =
   | "payment" | "member" | "plan" | "special_class"
   | "special_class_payment" | "exchange_rate" | "role" | "admin"
   | "monthly_closing" | "fund"
-  | "routine" | "routine_assignment" | "gym_schedule"
+  | "routine_schedule"
   | "personal_record"
   | "wod_log"
 
