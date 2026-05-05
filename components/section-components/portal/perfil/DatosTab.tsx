@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getMyProfile, updateMyProfile, uploadAvatarToCloudinary, updateAvatar } from "@/lib/actions/portal"
+import { getMyRecords } from "@/lib/actions/records"
 import { AthleteProfileForm } from "./AthleteProfileForm"
+import { ShareAthleteButton } from "./ShareAthleteButton"
 
 const schema = z.object({
   name: z.string().min(2, "Mínimo 2 caracteres"),
@@ -32,6 +34,12 @@ export function DatosTab() {
   const { data: profile } = useQuery({
     queryKey: ["my-profile"],
     queryFn: getMyProfile,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: records = [] } = useQuery({
+    queryKey: ["my-records"],
+    queryFn: getMyRecords,
     staleTime: 5 * 60 * 1000,
   })
 
@@ -123,6 +131,18 @@ export function DatosTab() {
           <div className="text-center">
             <p className="font-medium text-sm truncate max-w-[200px]">{profile?.name}</p>
             <p className="text-[11px] text-muted-foreground mt-1">JPG, PNG o WebP · Máx 10MB</p>
+          </div>
+          <div className="w-full pt-2">
+            <ShareAthleteButton
+              enabled={Boolean(profile?.gender) && records.length > 0}
+              disabledReason={
+                !profile?.gender
+                  ? "Completa tu género en el form de Perfil de atleta"
+                  : records.length === 0
+                    ? "Registra al menos una marca para generar tu ficha"
+                    : undefined
+              }
+            />
           </div>
         </CardContent>
       </Card>
