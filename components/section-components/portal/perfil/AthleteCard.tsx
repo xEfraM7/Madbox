@@ -23,7 +23,7 @@ const C = {
 export function AthleteCard({ data, innerRef }: Props) {
   const initials = data.name
     .split(" ")
-    .map((n) => n[0])
+    .map((n) => n.charAt(0))
     .join("")
     .slice(0, 2)
     .toUpperCase()
@@ -184,7 +184,7 @@ export function AthleteCard({ data, innerRef }: Props) {
             { label: "ALTURA", value: data.heightCm, unit: "cm" },
           ].map((s, i) => (
             <div
-              key={i}
+              key={s.label}
               style={{
                 textAlign: "center",
                 borderLeft: i === 0 ? "none" : `1px solid ${C.borderSoft}`,
