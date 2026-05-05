@@ -9,14 +9,15 @@ interface Props {
   innerRef?: React.RefObject<HTMLDivElement | null>
 }
 
-const COLORS = {
-  bgFrom: "#0a0a0a",
-  bgTo: "#171717",
+const C = {
+  bg0: "#050505",
+  bg1: "#0a0a0a",
   accent: "#FACC15",
   accentSoft: "rgba(250, 204, 21, 0.15)",
   text: "#fafafa",
   muted: "#a1a1aa",
   border: "rgba(250, 204, 21, 0.4)",
+  borderSoft: "rgba(250, 204, 21, 0.18)",
 }
 
 export function AthleteCard({ data, innerRef }: Props) {
@@ -27,12 +28,15 @@ export function AthleteCard({ data, innerRef }: Props) {
     .slice(0, 2)
     .toUpperCase()
 
-  const subtitle = [
-    data.planName ? data.planName.toUpperCase() : null,
-    data.athleteSinceYear ? `ATLETA DESDE ${data.athleteSinceYear}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ")
+  const levelLabel = data.athleteLevel ? ATHLETE_LEVEL_LABEL[data.athleteLevel].toUpperCase() : null
+  const subtitleParts = [
+    levelLabel,
+    data.athleteSinceYear ? `DESDE ${data.athleteSinceYear}` : null,
+  ].filter(Boolean) as string[]
+  const subtitle = subtitleParts.join(" · ")
+
+  const hasAnyBodyMetric =
+    data.age !== null || data.weightKg !== null || data.heightCm !== null
 
   return (
     <div
@@ -43,10 +47,10 @@ export function AthleteCard({ data, innerRef }: Props) {
         top: 0,
         width: 1080,
         height: 1920,
-        background: `linear-gradient(180deg, ${COLORS.bgFrom} 0%, ${COLORS.bgTo} 100%)`,
-        color: COLORS.text,
-        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-        padding: 64,
+        background: `linear-gradient(180deg, ${C.bg0} 0%, ${C.bg1} 100%)`,
+        color: C.text,
+        fontFamily: "'Geist', Georgia, serif",
+        padding: 80,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
@@ -55,106 +59,157 @@ export function AthleteCard({ data, innerRef }: Props) {
         zIndex: -1,
       }}
     >
-      {/* Logo */}
-      <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
-        <img
-          src="/madbox-logo.svg"
-          alt="Madbox"
-          width={240}
-          height={60}
-          crossOrigin="anonymous"
-          style={{ display: "block" }}
-        />
-      </div>
+      {/* Logo del oso */}
+      <img
+        src="/Madbox_logo.jpeg"
+        alt="Madbox"
+        crossOrigin="anonymous"
+        style={{
+          width: 110,
+          height: 110,
+          borderRadius: "50%",
+          border: `2px solid ${C.border}`,
+          objectFit: "cover",
+        }}
+      />
+      <p
+        style={{
+          margin: "20px 0 0 0",
+          fontSize: 14,
+          letterSpacing: 10,
+          color: C.accent,
+          textTransform: "uppercase",
+          fontWeight: 700,
+        }}
+      >
+        — The Athlete File —
+      </p>
 
-      {/* Avatar */}
-      <div style={{ marginTop: 80, width: 280, height: 280, borderRadius: "50%", border: `4px solid ${COLORS.accent}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg, ${COLORS.accentSoft}, transparent)` }}>
-        {data.avatarUrl ? (
-          <img
-            src={data.avatarUrl}
-            alt={data.name}
-            crossOrigin="anonymous"
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
-          <span style={{ fontSize: 96, fontWeight: 900, color: COLORS.accent, fontFamily: "'Bebas Neue', Impact, sans-serif" }}>
-            {initials}
-          </span>
-        )}
+      {/* Avatar con ticks decorativos */}
+      <div style={{ marginTop: 60, position: "relative" }}>
+        <div
+          style={{
+            width: 380,
+            height: 380,
+            borderRadius: "50%",
+            border: `3px solid ${C.accent}`,
+            background: `linear-gradient(135deg, ${C.accentSoft}, transparent)`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+          }}
+        >
+          {data.avatarUrl ? (
+            <img
+              src={data.avatarUrl}
+              alt={data.name}
+              crossOrigin="anonymous"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <span
+              style={{
+                fontSize: 140,
+                fontWeight: 900,
+                color: C.accent,
+                fontFamily: "'Bebas Neue', Impact, sans-serif",
+                letterSpacing: 6,
+              }}
+            >
+              {initials}
+            </span>
+          )}
+        </div>
+        <div style={{ position: "absolute", top: -20, left: "50%", width: 2, height: 30, background: C.accent, transform: "translateX(-50%)" }} />
+        <div style={{ position: "absolute", bottom: -20, left: "50%", width: 2, height: 30, background: C.accent, transform: "translateX(-50%)" }} />
+        <div style={{ position: "absolute", top: "50%", left: -30, width: 30, height: 2, background: C.accent, transform: "translateY(-50%)" }} />
+        <div style={{ position: "absolute", top: "50%", right: -30, width: 30, height: 2, background: C.accent, transform: "translateY(-50%)" }} />
       </div>
 
       {/* Nombre */}
       <h1
         style={{
-          marginTop: 40,
-          fontSize: 76,
+          margin: "56px 0 0 0",
+          fontSize: 124,
           fontWeight: 900,
-          letterSpacing: 2,
           textAlign: "center",
-          fontFamily: "'Bebas Neue', Impact, sans-serif",
+          letterSpacing: 6,
           textTransform: "uppercase",
-          margin: "40px 0 0 0",
+          fontFamily: "'Bebas Neue', Impact, sans-serif",
+          lineHeight: 0.95,
         }}
       >
         {data.name}
       </h1>
 
-      {/* Línea dorada */}
-      <div style={{ width: 200, height: 2, background: COLORS.accent, marginTop: 16 }} />
-
-      {/* Subtítulo */}
+      {/* Subtítulo: NIVEL · DESDE AÑO (con fallbacks) */}
       {subtitle && (
-        <p style={{ marginTop: 16, fontSize: 22, color: COLORS.muted, letterSpacing: 1.5, textAlign: "center" }}>
-          {subtitle}
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 24, marginTop: 28 }}>
+          <div style={{ width: 70, height: 1, background: C.accent }} />
+          <p
+            style={{
+              margin: 0,
+              fontSize: 22,
+              color: C.muted,
+              letterSpacing: 8,
+              textTransform: "uppercase",
+              fontWeight: 600,
+            }}
+          >
+            {subtitle}
+          </p>
+          <div style={{ width: 70, height: 1, background: C.accent }} />
+        </div>
       )}
 
-      {/* Stats grid */}
-      {(data.age !== null || data.weightKg !== null || data.heightCm !== null || data.athleteLevel !== null) && (
+      {/* Stats row: EDAD / PESO / ALTURA */}
+      {hasAnyBodyMetric && (
         <div
           style={{
-            marginTop: 56,
+            marginTop: 64,
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 16,
+            gridTemplateColumns: "repeat(3, 1fr)",
             width: "100%",
-            maxWidth: 880,
+            gap: 16,
+            paddingTop: 32,
+            paddingBottom: 32,
+            borderTop: `1px solid ${C.borderSoft}`,
+            borderBottom: `1px solid ${C.borderSoft}`,
           }}
         >
           {[
             { label: "EDAD", value: data.age, unit: "años" },
             { label: "PESO", value: data.weightKg, unit: "kg" },
             { label: "ALTURA", value: data.heightCm, unit: "cm" },
-            {
-              label: "NIVEL",
-              value: data.athleteLevel ? ATHLETE_LEVEL_LABEL[data.athleteLevel] : null,
-              unit: "",
-            },
-          ].map((stat, i) => (
+          ].map((s, i) => (
             <div
               key={i}
               style={{
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: 8,
-                padding: "20px 12px",
                 textAlign: "center",
-                background: "rgba(0,0,0,0.3)",
+                borderLeft: i === 0 ? "none" : `1px solid ${C.borderSoft}`,
+                padding: "0 8px",
               }}
             >
-              <p style={{ fontSize: 14, color: COLORS.muted, letterSpacing: 2, margin: 0 }}>{stat.label}</p>
+              <p style={{ fontSize: 14, color: C.muted, letterSpacing: 4, margin: 0, fontWeight: 700 }}>
+                {s.label}
+              </p>
               <p
                 style={{
-                  fontSize: 44,
-                  fontWeight: 800,
-                  margin: "8px 0 4px 0",
+                  fontSize: 72,
+                  fontWeight: 900,
+                  margin: "8px 0 0 0",
                   fontFamily: "'Bebas Neue', Impact, sans-serif",
-                  letterSpacing: 1,
+                  color: C.text,
+                  lineHeight: 1,
                 }}
               >
-                {stat.value ?? "—"}
+                {s.value ?? "—"}
               </p>
-              {stat.unit && (
-                <p style={{ fontSize: 12, color: COLORS.muted, margin: 0 }}>{stat.unit}</p>
+              {s.value !== null && (
+                <p style={{ fontSize: 14, color: C.muted, margin: "4px 0 0 0", letterSpacing: 2 }}>
+                  {s.unit.toUpperCase()}
+                </p>
               )}
             </div>
           ))}
@@ -165,97 +220,119 @@ export function AthleteCard({ data, innerRef }: Props) {
       {data.quote && (
         <p
           style={{
-            marginTop: 40,
-            fontSize: 28,
+            marginTop: 48,
+            fontSize: 32,
             fontStyle: "italic",
-            color: COLORS.text,
+            color: C.text,
             textAlign: "center",
-            maxWidth: 880,
+            maxWidth: 800,
             lineHeight: 1.4,
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            fontWeight: 400,
+            letterSpacing: 0.5,
           }}
         >
           &ldquo;{data.quote}&rdquo;
         </p>
       )}
 
-      {/* Records */}
-      {data.topRecords.length > 0 && (
-        <div style={{ marginTop: 56, width: "100%", maxWidth: 880 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-            <div style={{ flex: 1, height: 1, background: COLORS.border }} />
-            <span
+      {/* Levantamientos olímpicos (siempre visibles, "—" si peso es 0) */}
+      <p
+        style={{
+          marginTop: 56,
+          fontSize: 16,
+          color: C.accent,
+          letterSpacing: 10,
+          textAlign: "center",
+          fontWeight: 700,
+          textTransform: "uppercase",
+        }}
+      >
+        Levantamientos Olímpicos
+      </p>
+      <div
+        style={{
+          marginTop: 28,
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          width: "100%",
+          gap: 24,
+        }}
+      >
+        {data.topRecords.map((r, i) => (
+          <div
+            key={r.movement}
+            style={{
+              textAlign: "center",
+              borderLeft: i === 0 ? "none" : `1px solid ${C.borderSoft}`,
+              padding: "8px 4px",
+            }}
+          >
+            <p
               style={{
-                fontSize: 16,
-                color: COLORS.muted,
-                letterSpacing: 3,
-                fontWeight: 600,
+                fontSize: 14,
+                color: C.muted,
+                letterSpacing: 4,
+                margin: 0,
+                fontWeight: 700,
+                textTransform: "uppercase",
               }}
             >
-              RECORDS PERSONALES
-            </span>
-            <div style={{ flex: 1, height: 1, background: COLORS.border }} />
+              {r.label}
+            </p>
+            <p
+              style={{
+                fontSize: 96,
+                fontWeight: 900,
+                margin: "10px 0 0 0",
+                fontFamily: "'Bebas Neue', Impact, sans-serif",
+                color: C.accent,
+                lineHeight: 1,
+                letterSpacing: 2,
+              }}
+            >
+              {r.weightKg > 0 ? r.weightKg.toLocaleString("es-VE") : "—"}
+            </p>
+            {r.weightKg > 0 && (
+              <p style={{ fontSize: 16, color: C.muted, margin: "4px 0 0 0", letterSpacing: 4, fontWeight: 700 }}>
+                KG
+              </p>
+            )}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {data.topRecords.map((r) => (
-              <div
-                key={r.movement}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 20px",
-                  background: "rgba(255,255,255,0.03)",
-                  borderRadius: 6,
-                }}
-              >
-                <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>
-                  {r.label}
-                </span>
-                <span
-                  style={{
-                    fontSize: 26,
-                    fontWeight: 800,
-                    color: COLORS.accent,
-                    fontFamily: "'Bebas Neue', Impact, sans-serif",
-                    letterSpacing: 1,
-                  }}
-                >
-                  {r.weightKg.toLocaleString("es-VE")} KG
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* Grand Total */}
+      <div style={{ flex: 1 }} />
+
+      {/* Grand Total (solo si hay algo que sumar) */}
       {data.totals.grand > 0 && (
         <div
           style={{
-            marginTop: "auto",
-            border: `2px solid ${COLORS.accent}`,
-            borderRadius: 8,
-            padding: "24px 48px",
+            marginTop: 32,
+            padding: "28px 64px",
             textAlign: "center",
-            background: COLORS.accentSoft,
-            boxShadow: `0 0 30px ${COLORS.accentSoft}`,
-            minWidth: 480,
+            borderTop: `2px solid ${C.accent}`,
+            borderBottom: `2px solid ${C.accent}`,
+            width: "100%",
+            maxWidth: 700,
           }}
         >
-          <p style={{ fontSize: 18, color: COLORS.muted, letterSpacing: 4, fontWeight: 600, margin: 0 }}>
+          <p style={{ fontSize: 16, color: C.muted, letterSpacing: 10, fontWeight: 700, margin: 0 }}>
             GRAND TOTAL
           </p>
           <p
             style={{
-              fontSize: 88,
+              fontSize: 120,
               fontWeight: 900,
-              color: COLORS.accent,
+              color: C.accent,
               fontFamily: "'Bebas Neue', Impact, sans-serif",
-              letterSpacing: 3,
               margin: "8px 0 0 0",
+              letterSpacing: 6,
+              lineHeight: 1,
             }}
           >
-            {data.totals.grand.toLocaleString("es-VE")} KG
+            {data.totals.grand.toLocaleString("es-VE")}{" "}
+            <span style={{ fontSize: 60, color: C.text }}>KG</span>
           </p>
         </div>
       )}
@@ -263,14 +340,15 @@ export function AthleteCard({ data, innerRef }: Props) {
       {/* Footer */}
       <p
         style={{
-          marginTop: 32,
-          fontSize: 16,
-          color: COLORS.muted,
-          letterSpacing: 4,
-          textTransform: "lowercase",
+          marginTop: 28,
+          fontSize: 14,
+          color: C.muted,
+          letterSpacing: 12,
+          textTransform: "uppercase",
+          fontWeight: 700,
         }}
       >
-        madbox · crossfit elite
+        the madbox · crossfit elite
       </p>
     </div>
   )
