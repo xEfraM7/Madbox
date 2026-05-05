@@ -1,114 +1,72 @@
 "use client"
 
-import { useState } from "react"
+import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { CalendarDays, Loader2, Pencil, Plus } from "lucide-react"
-import { RoutineBlocks } from "@/components/shared/routine-blocks/RoutineBlocks"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import { format, parseISO } from "date-fns"
+import { es } from "date-fns/locale"
+import { ArrowRight, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { getTodayRoutineForMember } from "@/lib/actions/routines"
-import { getTodayWodLog } from "@/lib/actions/wod-logs"
-import { formatScore } from "@/lib/constants/wod-score"
-import { getPrimaryConditioningBlock, parseBlocks } from "@/lib/constants/routine-blocks"
-import { LogWodModal } from "../wod/log-wod-modal"
+import { Skeleton } from "@/components/ui/skeleton"
+import { getRoutineForMemberOnDate } from "@/lib/actions/routines"
+
+function todayCaracasISO(): string {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Caracas",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+  return fmt.format(new Date())
+}
 
 export function TodayRoutineCard() {
-  const [modalOpen, setModalOpen] = useState(false)
+  const today = todayCaracasISO()
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["portal-today-routine"],
-    queryFn: getTodayRoutineForMember,
-    staleTime: 5 * 60 * 1000,
+  const { data: routine, isLoading } = useQuery({
+    queryKey: ["my-routine", today],
+    queryFn: () => getRoutineForMemberOnDate(today),
   })
 
-  const { data: log = null } = useQuery({
-    queryKey: ["today-wod-log"],
-    queryFn: getTodayWodLog,
-    staleTime: 60 * 1000,
-  })
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="py-8 flex items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (!data) return null
+  const dateLabel = (() => {
+    const lbl = format(parseISO(today + "T00:00:00"), "EEEE, d 'de' MMMM", { locale: es })
+    return lbl.charAt(0).toUpperCase() + lbl.slice(1)
+  })()
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <CalendarDays className="h-5 w-5 text-primary" />
-            <div className="min-w-0">
-              <CardTitle className="text-base">Rutina de hoy · {data.day_of_week}</CardTitle>
-              {data.plan_name && (
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                  {data.plan_name}{data.routine ? ` · ${data.routine.name}` : ""}
-                </p>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {data.routine ? (
-            <RoutineBlocks
-              blocks={(data.routine as { blocks: unknown }).blocks}
-              emptyMessage="Tu coach aún no completó esta rutina."
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Tu coach aún no asignó la rutina de hoy.
-            </p>
-          )}
+    <div className="rounded-xl border bg-card p-4 sm:p-5 space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Tu rutina de hoy</p>
+          <h3 className="text-lg font-semibold mt-0.5">{dateLabel}</h3>
+        </div>
+        <Link href="/portal/rutinas">
+          <Button variant="ghost" size="sm" className="gap-1">
+            <CalendarDays className="h-4 w-4" /> Ver todas
+          </Button>
+        </Link>
+      </div>
 
-          {data.routine && getPrimaryConditioningBlock(parseBlocks((data.routine as { blocks: unknown }).blocks)) !== null && (
-            <div className="border-t pt-4">
-              {log ? (
-                <div className="flex items-center justify-between gap-3 rounded-md bg-primary/5 p-3">
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Tu score</p>
-                    <p className="font-bold text-base tabular-nums">
-                      {formatScore({
-                        score_type: log.score_type,
-                        score_seconds: log.score_seconds,
-                        score_rounds: log.score_rounds,
-                        score_reps: log.score_reps,
-                        score_kg: log.score_kg,
-                      })}
-                    </p>
-                  </div>
-                  <Badge variant={log.rx ? "default" : "outline"} className="shrink-0">
-                    {log.rx ? "RX" : "Scaled"}
-                  </Badge>
-                  <Button size="sm" variant="outline" onClick={() => setModalOpen(true)} className="gap-2 shrink-0">
-                    <Pencil className="h-3.5 w-3.5" />
-                    Editar
-                  </Button>
-                </div>
-              ) : (
-                <Button size="sm" onClick={() => setModalOpen(true)} className="w-full gap-2">
-                  <Plus className="h-4 w-4" />
-                  Registrar mi WOD
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <LogWodModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        existingLog={log}
-        defaultRoutineId={data.routine?.id}
-      />
-    </>
+      {isLoading ? (
+        <Skeleton className="h-24 w-full" />
+      ) : routine ? (
+        <div className="space-y-2">
+          {routine.name && <p className="font-medium">{routine.name}</p>}
+          <article className="prose prose-invert prose-sm max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{routine.content}</ReactMarkdown>
+          </article>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed p-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            Sin rutina programada para hoy.
+          </p>
+          <Link href="/portal/rutinas" className="inline-flex items-center gap-1 mt-2 text-sm text-primary hover:underline">
+            Ver próximas rutinas <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      )}
+    </div>
   )
 }
