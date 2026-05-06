@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache"
 import { getCurrentAdminPermissions } from "./roles"
 import { logActivity } from "./activity"
 import { todayCaracasISO } from "@/lib/constants/wod-score"
+import type { RoutineBlock } from "@/lib/constants/routine-blocks"
+import { parseBlocks } from "@/lib/constants/routine-blocks"
+import { routineBlocksSchema } from "@/lib/schemas/routine-blocks"
 
 // ─── Tipos ───────────────────────────────────────────────────
 
@@ -13,6 +16,7 @@ export interface RoutineSchedule {
   date: string // YYYY-MM-DD
   name: string | null
   content: string
+  blocks: RoutineBlock[]
   created_at: string | null
   updated_at: string | null
   plans: Array<{ id: string; name: string }>
@@ -21,7 +25,8 @@ export interface RoutineSchedule {
 export interface CreateRoutineScheduleInput {
   date: string
   name?: string | null
-  content: string
+  content?: string
+  blocks: RoutineBlock[]
   plan_ids: string[]
   replace_conflicts?: boolean
 }
@@ -30,6 +35,7 @@ export interface UpdateRoutineScheduleInput {
   date?: string
   name?: string | null
   content?: string
+  blocks?: RoutineBlock[]
   plan_ids?: string[]
   replace_conflicts?: boolean
 }
@@ -75,6 +81,7 @@ function shapeRoutineSchedule(row: any): RoutineSchedule {
     date: row.date,
     name: row.name ?? null,
     content: row.content ?? "",
+    blocks: parseBlocks(row.blocks),
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
     plans: plansArr,
@@ -91,7 +98,7 @@ export async function getRoutineSchedules(filters?: {
   let query = supabase
     .from("routine_schedules")
     .select(
-      "id, date, name, content, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name))",
+      "id, date, name, content, blocks, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name))",
     )
     .order("date", { ascending: true })
 
@@ -108,7 +115,7 @@ export async function getRoutineSchedule(id: string): Promise<RoutineSchedule | 
   const { data, error } = await supabase
     .from("routine_schedules")
     .select(
-      "id, date, name, content, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name))",
+      "id, date, name, content, blocks, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name))",
     )
     .eq("id", id)
     .maybeSingle()
@@ -140,9 +147,14 @@ export async function createRoutineSchedule(
   if (!input.plan_ids?.length) {
     throw new Error("Selecciona al menos un plan")
   }
-  if (!input.content?.trim()) {
-    throw new Error("El contenido de la rutina es requerido")
+
+  // Validar blocks con Zod
+  const parsedBlocks = routineBlocksSchema.safeParse(input.blocks)
+  if (!parsedBlocks.success) {
+    throw new Error(parsedBlocks.error.issues[0]?.message ?? "Bloques inválidos")
   }
+  const blocks = parsedBlocks.data
+
   if (input.date < todayCaracasISO()) {
     throw new Error("No se permiten fechas pasadas")
   }
@@ -179,7 +191,8 @@ export async function createRoutineSchedule(
     .insert({
       date: input.date,
       name: input.name?.trim() || null,
-      content: input.content,
+      content: input.content ?? "",
+      blocks: blocks as any,
     })
     .select("id")
     .single()
@@ -205,6 +218,7 @@ export async function createRoutineSchedule(
   revalidatePath("/dashboard/rutinas")
   revalidatePath("/portal")
   revalidatePath("/portal/rutinas")
+  revalidatePath("/portal/wod")
 
   const final = await getRoutineSchedule(inserted.id)
   if (!final) throw new Error("Error al recuperar rutina creada")
@@ -225,11 +239,17 @@ export async function updateRoutineSchedule(
   const newDate = input.date ?? current.date
   const newPlanIds = input.plan_ids ?? current.plans.map((p) => p.id)
 
-  if (input.content !== undefined && !input.content.trim()) {
-    throw new Error("El contenido de la rutina es requerido")
-  }
   if (newPlanIds.length === 0) {
     throw new Error("Selecciona al menos un plan")
+  }
+
+  let validatedBlocks: typeof current.blocks | undefined
+  if (input.blocks !== undefined) {
+    const parsed = routineBlocksSchema.safeParse(input.blocks)
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message ?? "Bloques inválidos")
+    }
+    validatedBlocks = parsed.data
   }
 
   const supabase = await createClient()
@@ -264,6 +284,7 @@ export async function updateRoutineSchedule(
   if (input.date !== undefined) updatePayload.date = input.date
   if (input.name !== undefined) updatePayload.name = input.name?.trim() || null
   if (input.content !== undefined) updatePayload.content = input.content
+  if (validatedBlocks !== undefined) updatePayload.blocks = validatedBlocks
 
   const { error: uErr } = await supabase
     .from("routine_schedules")
@@ -293,6 +314,7 @@ export async function updateRoutineSchedule(
   revalidatePath("/dashboard/rutinas")
   revalidatePath("/portal")
   revalidatePath("/portal/rutinas")
+  revalidatePath("/portal/wod")
 
   const final = await getRoutineSchedule(id)
   if (!final) throw new Error("Error al recuperar rutina actualizada")
@@ -344,7 +366,7 @@ export async function getRoutineForMemberOnDate(
   const { data, error } = await supabase
     .from("routine_schedule_plans")
     .select(
-      "schedule_id, routine_schedules!inner(id, date, name, content, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name)))",
+      "schedule_id, routine_schedules!inner(id, date, name, content, blocks, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name)))",
     )
     .eq("plan_id", member.plan_id)
     .eq("routine_schedules.date", date)
