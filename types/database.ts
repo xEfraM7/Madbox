@@ -602,6 +602,7 @@ export type Database = {
       }
       routine_schedules: {
         Row: {
+          blocks: Json
           content: string
           created_at: string | null
           date: string
@@ -610,6 +611,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          blocks?: Json
           content?: string
           created_at?: string | null
           date: string
@@ -618,6 +620,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          blocks?: Json
           content?: string
           created_at?: string | null
           date?: string
@@ -722,6 +725,7 @@ export type Database = {
       }
       wod_logs: {
         Row: {
+          block_id: string
           created_at: string | null
           date: string
           id: string
@@ -737,6 +741,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          block_id?: string
           created_at?: string | null
           date: string
           id?: string
@@ -752,6 +757,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          block_id?: string
           created_at?: string | null
           date?: string
           id?: string
