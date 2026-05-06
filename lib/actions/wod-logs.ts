@@ -451,3 +451,37 @@ export async function getLeaderboardForBlock(input: {
     entries,
   }
 }
+
+// ─── Vista pública de otro miembro ───────────────────────────
+
+export interface WodLogWithRoutineName extends WodLog {
+  routine_name: string | null
+}
+
+export async function getMemberRecentWods(
+  memberId: string,
+  limit = 5,
+): Promise<WodLogWithRoutineName[]> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from("wod_logs")
+    .select("*, routine_schedules(name)")
+    .eq("member_id", memberId)
+    .order("date", { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return (data ?? []).map((row: any) => ({
+    ...rowToWodLog(row),
+    routine_name:
+      (Array.isArray(row.routine_schedules)
+        ? row.routine_schedules[0]?.name
+        : row.routine_schedules?.name) ?? null,
+  }))
+}
