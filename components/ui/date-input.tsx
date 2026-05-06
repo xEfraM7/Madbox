@@ -46,6 +46,7 @@ export function DateInput({ value, onChange, placeholder = "Día/Mes/Año", disa
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant="outline"
           disabled={disabled}
           className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground", className)}
@@ -58,6 +59,7 @@ export function DateInput({ value, onChange, placeholder = "Día/Mes/Año", disa
         <div className="p-3">
           <div className="flex items-center justify-between mb-4">
             <Button
+              type="button"
               variant="outline"
               size="icon"
               className="h-7 w-7"
@@ -69,6 +71,7 @@ export function DateInput({ value, onChange, placeholder = "Día/Mes/Año", disa
               {format(currentMonth, "MMMM yyyy", { locale: es })}
             </span>
             <Button
+              type="button"
               variant="outline"
               size="icon"
               className="h-7 w-7"
@@ -95,6 +98,7 @@ export function DateInput({ value, onChange, placeholder = "Día/Mes/Año", disa
               return (
                 <Button
                   key={index}
+                  type="button"
                   variant="ghost"
                   size="icon"
                   className={cn(
