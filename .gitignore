@@ -45,3 +45,6 @@ next-env.d.ts
 
 # MCP
 .mcp.json
+
+# Brainstorming visual companion
+.superpowers/
