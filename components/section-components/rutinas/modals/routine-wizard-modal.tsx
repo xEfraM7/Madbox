@@ -7,10 +7,8 @@ import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
 import { toast } from "sonner"
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Eye, Pencil } from "lucide-react"
+import { AlertTriangle, Check, ChevronLeft, ChevronRight } from "lucide-react"
 
 import {
   Dialog,
@@ -25,7 +23,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Calendar } from "@/components/ui/calendar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { getPlans } from "@/lib/actions/plans"
@@ -35,12 +32,15 @@ import {
   updateRoutineSchedule,
   type RoutineSchedule,
 } from "@/lib/actions/routines"
+import { createBlock, type RoutineBlock } from "@/lib/constants/routine-blocks"
+import { routineBlocksSchema } from "@/lib/schemas/routine-blocks"
+import { RoutineBlocksEditor } from "../blocks-editor/RoutineBlocksEditor"
 
 const schema = z.object({
   date: z.string().min(1, "Selecciona una fecha"),
   plan_ids: z.array(z.string().uuid()).min(1, "Selecciona al menos un plan"),
   name: z.string().max(100, "Máx. 100 caracteres").optional(),
-  content: z.string().min(1, "El contenido es requerido"),
+  blocks: routineBlocksSchema,
 })
 type FormValues = z.infer<typeof schema>
 
@@ -69,13 +69,23 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
     return fmt.format(new Date())
   }, [])
 
+  const initialBlocks = useMemo<RoutineBlock[]>(() => {
+    if (routine?.blocks && routine.blocks.length > 0) return routine.blocks
+    if (routine?.content && routine.content.trim().length > 0) {
+      // Migración inline: rutina antigua con solo markdown → un bloque notes
+      const b = createBlock("notes", 0)
+      return [{ ...b, text: routine.content }] as RoutineBlock[]
+    }
+    return []
+  }, [routine])
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       date: routine?.date ?? todayISO,
       plan_ids: routine?.plans.map((p) => p.id) ?? [],
       name: routine?.name ?? "",
-      content: routine?.content ?? "",
+      blocks: initialBlocks,
     },
   })
 
@@ -85,13 +95,13 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
         date: routine?.date ?? todayISO,
         plan_ids: routine?.plans.map((p) => p.id) ?? [],
         name: routine?.name ?? "",
-        content: routine?.content ?? "",
+        blocks: initialBlocks,
       })
       setStep(1)
       setConflictPlanIds([])
       setAllowReplace(false)
     }
-  }, [open, routine, todayISO, form])
+  }, [open, routine, todayISO, form, initialBlocks])
 
   const { data: plans = [], isLoading: plansLoading } = useQuery({
     queryKey: ["plans"],
@@ -101,8 +111,7 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
 
   const date = form.watch("date")
   const planIds = form.watch("plan_ids")
-  const name = form.watch("name")
-  const content = form.watch("content")
+  const blocks = form.watch("blocks")
 
   const checkConflictsMut = useMutation({
     mutationFn: (vars: { date: string; plan_ids: string[]; exclude_id?: string }) =>
@@ -138,7 +147,7 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
         return createRoutineSchedule({
           date: values.date,
           name: values.name?.trim() || null,
-          content: values.content,
+          blocks: values.blocks,
           plan_ids: values.plan_ids,
           replace_conflicts: allowReplace,
         })
@@ -147,7 +156,7 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
         return updateRoutineSchedule(routine.id, {
           date: values.date,
           name: values.name?.trim() || null,
-          content: values.content,
+          blocks: values.blocks,
           plan_ids: values.plan_ids,
           replace_conflicts: allowReplace,
         })
@@ -175,7 +184,7 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
   const stepValid =
     (step === 1 && !!date && (mode === "edit" || date >= todayISO)) ||
     (step === 2 && planIds.length > 0) ||
-    (step === 3 && (content ?? "").trim().length > 0)
+    (step === 3 && (blocks ?? []).length > 0)
 
   const titleByMode = mode === "create" ? "Programar nueva rutina" : "Editar rutina"
 
@@ -333,47 +342,26 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
               <Label htmlFor="routine-name">Nombre (opcional)</Label>
               <Input
                 id="routine-name"
-                placeholder="Ej: Push Day, AMRAP 20…"
-                value={name ?? ""}
+                placeholder='Ej: "Murph" prep'
+                value={form.watch("name") ?? ""}
                 onChange={(e) => form.setValue("name", e.target.value)}
                 maxLength={100}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Contenido (Markdown)</Label>
-              <Tabs defaultValue="edit">
-                <TabsList>
-                  <TabsTrigger value="edit" className="gap-1.5">
-                    <Pencil className="h-3.5 w-3.5" /> Editar
-                  </TabsTrigger>
-                  <TabsTrigger value="preview" className="gap-1.5">
-                    <Eye className="h-3.5 w-3.5" /> Vista previa
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="edit" className="mt-2">
-                  <textarea
-                    rows={16}
-                    placeholder="# AMRAP 20&#10;- 10 push-ups&#10;- 15 air squats"
-                    value={content ?? ""}
-                    onChange={(e) => form.setValue("content", e.target.value, { shouldValidate: true })}
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-                  />
-                </TabsContent>
-                <TabsContent value="preview" className="mt-2">
-                  <article className="prose prose-invert prose-sm max-w-none rounded-md border bg-background p-4 min-h-[16rem]">
-                    {(content ?? "").trim() ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-                    ) : (
-                      <p className="text-muted-foreground italic">Vacío</p>
-                    )}
-                  </article>
-                </TabsContent>
-              </Tabs>
-              {form.formState.errors.content && (
-                <p className="text-xs text-destructive">{form.formState.errors.content.message}</p>
-              )}
-            </div>
+            <RoutineBlocksEditor
+              blocks={blocks ?? []}
+              onChange={(next) => form.setValue("blocks", next, { shouldValidate: true })}
+            />
+
+            {form.formState.errors.blocks && (
+              <p className="text-xs text-destructive">
+                {form.formState.errors.blocks.message ??
+                  (Array.isArray(form.formState.errors.blocks)
+                    ? "Hay bloques con campos inválidos"
+                    : "Bloques inválidos")}
+              </p>
+            )}
           </div>
         )}
 
