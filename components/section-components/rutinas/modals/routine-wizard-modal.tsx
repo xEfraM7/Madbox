@@ -8,7 +8,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
-import { AlertTriangle, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Eye, Pencil } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 import {
   Dialog,
@@ -24,6 +26,8 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Calendar } from "@/components/ui/calendar"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { getPlans } from "@/lib/actions/plans"
 import {
@@ -32,15 +36,16 @@ import {
   updateRoutineSchedule,
   type RoutineSchedule,
 } from "@/lib/actions/routines"
-import { createBlock, type RoutineBlock } from "@/lib/constants/routine-blocks"
-import { routineBlocksSchema } from "@/lib/schemas/routine-blocks"
-import { RoutineBlocksEditor } from "../blocks-editor/RoutineBlocksEditor"
+import { type ScoreSlot } from "@/lib/constants/score-slots"
+import { scoreSlotsSchema } from "@/lib/schemas/score-slots"
+import { ScoreSlotsManager } from "../ScoreSlotsManager"
 
 const schema = z.object({
   date: z.string().min(1, "Selecciona una fecha"),
   plan_ids: z.array(z.string().uuid()).min(1, "Selecciona al menos un plan"),
   name: z.string().max(100, "Máx. 100 caracteres").optional(),
-  blocks: routineBlocksSchema,
+  content: z.string(),
+  score_slots: scoreSlotsSchema,
 })
 type FormValues = z.infer<typeof schema>
 
@@ -69,15 +74,10 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
     return fmt.format(new Date())
   }, [])
 
-  const initialBlocks = useMemo<RoutineBlock[]>(() => {
-    if (routine?.blocks && routine.blocks.length > 0) return routine.blocks
-    if (routine?.content && routine.content.trim().length > 0) {
-      // Migración inline: rutina antigua con solo markdown → un bloque notes
-      const b = createBlock("notes", 0)
-      return [{ ...b, text: routine.content }] as RoutineBlock[]
-    }
-    return []
-  }, [routine])
+  const initialSlots = useMemo<ScoreSlot[]>(
+    () => (routine?.score_slots ?? []),
+    [routine],
+  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -85,7 +85,8 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
       date: routine?.date ?? todayISO,
       plan_ids: routine?.plans.map((p) => p.id) ?? [],
       name: routine?.name ?? "",
-      blocks: initialBlocks,
+      content: routine?.content ?? "",
+      score_slots: initialSlots,
     },
   })
 
@@ -95,23 +96,26 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
         date: routine?.date ?? todayISO,
         plan_ids: routine?.plans.map((p) => p.id) ?? [],
         name: routine?.name ?? "",
-        blocks: initialBlocks,
+        content: routine?.content ?? "",
+        score_slots: initialSlots,
       })
       setStep(1)
       setConflictPlanIds([])
       setAllowReplace(false)
     }
-  }, [open, routine, todayISO, form, initialBlocks])
+  }, [open, routine, todayISO, form, initialSlots])
 
   const { data: plans = [], isLoading: plansLoading } = useQuery({
     queryKey: ["plans"],
     queryFn: getPlans,
   })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const activePlans = (plans as any[]).filter((p) => p.active !== false)
 
   const date = form.watch("date")
   const planIds = form.watch("plan_ids")
-  const blocks = form.watch("blocks")
+  const content = form.watch("content")
+  const score_slots = form.watch("score_slots")
 
   const checkConflictsMut = useMutation({
     mutationFn: (vars: { date: string; plan_ids: string[]; exclude_id?: string }) =>
@@ -147,7 +151,8 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
         return createRoutineSchedule({
           date: values.date,
           name: values.name?.trim() || null,
-          blocks: values.blocks,
+          content: values.content,
+          score_slots: values.score_slots,
           plan_ids: values.plan_ids,
           replace_conflicts: allowReplace,
         })
@@ -156,7 +161,8 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
         return updateRoutineSchedule(routine.id, {
           date: values.date,
           name: values.name?.trim() || null,
-          blocks: values.blocks,
+          content: values.content,
+          score_slots: values.score_slots,
           plan_ids: values.plan_ids,
           replace_conflicts: allowReplace,
         })
@@ -167,6 +173,7 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
       queryClient.invalidateQueries({ queryKey: ["routine-schedules"] })
       onOpenChange(false)
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (e: any) => {
       if (e?.code === "CONFLICT" && Array.isArray(e?.planIds)) {
         setConflictPlanIds(e.planIds)
@@ -184,7 +191,8 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
   const stepValid =
     (step === 1 && !!date && (mode === "edit" || date >= todayISO)) ||
     (step === 2 && planIds.length > 0) ||
-    (step === 3 && (blocks ?? []).length > 0)
+    (step === 3 &&
+      (!!content?.trim() || (score_slots ?? []).length > 0))
 
   const titleByMode = mode === "create" ? "Programar nueva rutina" : "Editar rutina"
 
@@ -274,6 +282,7 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
               <p className="text-sm text-muted-foreground">No hay planes activos.</p>
             ) : (
               <ul className="space-y-2">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {activePlans.map((p: any) => {
                   const checked = planIds.includes(p.id)
                   const conflicted = conflictPlanIds.includes(p.id)
@@ -349,17 +358,55 @@ export function RoutineWizardModal({ open, onOpenChange, mode, routine }: Props)
               />
             </div>
 
-            <RoutineBlocksEditor
-              blocks={blocks ?? []}
-              onChange={(next) => form.setValue("blocks", next, { shouldValidate: true })}
+            <div className="space-y-2">
+              <Label>Contenido (Markdown)</Label>
+              <Tabs defaultValue="editor">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="editor" className="gap-1.5">
+                    <Pencil className="h-3.5 w-3.5" /> Editor
+                  </TabsTrigger>
+                  <TabsTrigger value="preview" className="gap-1.5">
+                    <Eye className="h-3.5 w-3.5" /> Preview
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="editor">
+                  <Textarea
+                    placeholder={"# AMRAP 20'\n- 10 pull-ups\n- 20 push-ups\n- 30 air squats"}
+                    value={content ?? ""}
+                    onChange={(e) => form.setValue("content", e.target.value, { shouldValidate: true })}
+                    rows={10}
+                    className="font-mono text-sm"
+                  />
+                </TabsContent>
+                <TabsContent value="preview">
+                  <div className="rounded-md border border-border bg-card/40 p-3 min-h-48 prose prose-invert prose-sm max-w-none">
+                    {content?.trim() ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Sin contenido. Empieza a escribir en la pestaña Editor.</p>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            <ScoreSlotsManager
+              slots={score_slots ?? []}
+              onChange={(next) => form.setValue("score_slots", next, { shouldValidate: true })}
             />
 
-            {form.formState.errors.blocks && (
+            {form.formState.errors.score_slots && (
               <p className="text-xs text-destructive">
-                {form.formState.errors.blocks.message ??
-                  (Array.isArray(form.formState.errors.blocks)
-                    ? "Hay bloques con campos inválidos"
-                    : "Bloques inválidos")}
+                {form.formState.errors.score_slots.message ??
+                  (Array.isArray(form.formState.errors.score_slots)
+                    ? "Hay slots con campos inválidos"
+                    : "Slots inválidos")}
+              </p>
+            )}
+
+            {!stepValid && (
+              <p className="text-xs text-muted-foreground">
+                Agrega al menos contenido en Markdown o un slot de score.
               </p>
             )}
           </div>
