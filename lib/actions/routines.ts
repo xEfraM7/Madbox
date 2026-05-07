@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache"
 import { getCurrentAdminPermissions } from "./roles"
 import { logActivity } from "./activity"
 import { todayCaracasISO } from "@/lib/constants/wod-score"
-import type { RoutineBlock } from "@/lib/constants/routine-blocks"
-import { parseBlocks } from "@/lib/constants/routine-blocks"
-import { routineBlocksSchema } from "@/lib/schemas/routine-blocks"
+import type { ScoreSlot } from "@/lib/constants/score-slots"
+import { parseScoreSlots } from "@/lib/constants/score-slots"
+import { scoreSlotsSchema } from "@/lib/schemas/score-slots"
 
 // ─── Tipos ───────────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ export interface RoutineSchedule {
   date: string // YYYY-MM-DD
   name: string | null
   content: string
-  blocks: RoutineBlock[]
+  score_slots: ScoreSlot[]
   created_at: string | null
   updated_at: string | null
   plans: Array<{ id: string; name: string }>
@@ -26,7 +26,7 @@ export interface CreateRoutineScheduleInput {
   date: string
   name?: string | null
   content?: string
-  blocks: RoutineBlock[]
+  score_slots: ScoreSlot[]
   plan_ids: string[]
   replace_conflicts?: boolean
 }
@@ -35,7 +35,7 @@ export interface UpdateRoutineScheduleInput {
   date?: string
   name?: string | null
   content?: string
-  blocks?: RoutineBlock[]
+  score_slots?: ScoreSlot[]
   plan_ids?: string[]
   replace_conflicts?: boolean
 }
@@ -81,7 +81,7 @@ function shapeRoutineSchedule(row: any): RoutineSchedule {
     date: row.date,
     name: row.name ?? null,
     content: row.content ?? "",
-    blocks: parseBlocks(row.blocks),
+    score_slots: parseScoreSlots(row.score_slots),
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
     plans: plansArr,
@@ -98,7 +98,7 @@ export async function getRoutineSchedules(filters?: {
   let query = supabase
     .from("routine_schedules")
     .select(
-      "id, date, name, content, blocks, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name))",
+      "id, date, name, content, score_slots, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name))",
     )
     .order("date", { ascending: true })
 
@@ -115,7 +115,7 @@ export async function getRoutineSchedule(id: string): Promise<RoutineSchedule | 
   const { data, error } = await supabase
     .from("routine_schedules")
     .select(
-      "id, date, name, content, blocks, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name))",
+      "id, date, name, content, score_slots, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name))",
     )
     .eq("id", id)
     .maybeSingle()
@@ -148,12 +148,12 @@ export async function createRoutineSchedule(
     throw new Error("Selecciona al menos un plan")
   }
 
-  // Validar blocks con Zod
-  const parsedBlocks = routineBlocksSchema.safeParse(input.blocks)
-  if (!parsedBlocks.success) {
-    throw new Error(parsedBlocks.error.issues[0]?.message ?? "Bloques inválidos")
+  // Validar score_slots con Zod (puede ser vacío)
+  const parsedSlots = scoreSlotsSchema.safeParse(input.score_slots ?? [])
+  if (!parsedSlots.success) {
+    throw new Error(parsedSlots.error.issues[0]?.message ?? "Slots inválidos")
   }
-  const blocks = parsedBlocks.data
+  const score_slots = parsedSlots.data
 
   if (input.date < todayCaracasISO()) {
     throw new Error("No se permiten fechas pasadas")
@@ -192,7 +192,7 @@ export async function createRoutineSchedule(
       date: input.date,
       name: input.name?.trim() || null,
       content: input.content ?? "",
-      blocks: blocks as any,
+      score_slots: score_slots as any,
     })
     .select("id")
     .single()
@@ -243,13 +243,13 @@ export async function updateRoutineSchedule(
     throw new Error("Selecciona al menos un plan")
   }
 
-  let validatedBlocks: typeof current.blocks | undefined
-  if (input.blocks !== undefined) {
-    const parsed = routineBlocksSchema.safeParse(input.blocks)
+  let validatedSlots: ScoreSlot[] | undefined
+  if (input.score_slots !== undefined) {
+    const parsed = scoreSlotsSchema.safeParse(input.score_slots)
     if (!parsed.success) {
-      throw new Error(parsed.error.issues[0]?.message ?? "Bloques inválidos")
+      throw new Error(parsed.error.issues[0]?.message ?? "Slots inválidos")
     }
-    validatedBlocks = parsed.data
+    validatedSlots = parsed.data
   }
 
   const supabase = await createClient()
@@ -284,7 +284,7 @@ export async function updateRoutineSchedule(
   if (input.date !== undefined) updatePayload.date = input.date
   if (input.name !== undefined) updatePayload.name = input.name?.trim() || null
   if (input.content !== undefined) updatePayload.content = input.content
-  if (validatedBlocks !== undefined) updatePayload.blocks = validatedBlocks
+  if (validatedSlots !== undefined) updatePayload.score_slots = validatedSlots
 
   const { error: uErr } = await supabase
     .from("routine_schedules")
@@ -366,7 +366,7 @@ export async function getRoutineForMemberOnDate(
   const { data, error } = await supabase
     .from("routine_schedule_plans")
     .select(
-      "schedule_id, routine_schedules!inner(id, date, name, content, blocks, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name)))",
+      "schedule_id, routine_schedules!inner(id, date, name, content, score_slots, created_at, updated_at, routine_schedule_plans(plan_id, plans(id, name)))",
     )
     .eq("plan_id", member.plan_id)
     .eq("routine_schedules.date", date)
