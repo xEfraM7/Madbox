@@ -66,7 +66,6 @@ export async function createMember(member: TablesInsert<"members">) {
 
   if (error) throw error
 
-  // Crear cuenta de auth para el nuevo miembro
   const adminClient = createAdminClient()
   const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email: data.email,
@@ -76,13 +75,28 @@ export async function createMember(member: TablesInsert<"members">) {
     email_confirm: true,
   })
 
+  let authUserId: string | null = null
   if (!authError && authData.user) {
+    authUserId = authData.user.id
+  } else if (authError) {
+    // Si el email ya existe en auth.users, vincular al usuario existente
+    // en lugar de dejar al miembro sin auth_user_id (root cause de logins fallidos).
+    const { data: existing } = await adminClient.auth.admin.listUsers()
+    const match = existing?.users.find(
+      (u) => u.email?.toLowerCase() === data.email.toLowerCase(),
+    )
+    if (match) {
+      authUserId = match.id
+    } else {
+      console.warn(`No se pudo crear cuenta auth para ${data.email}: ${authError.message}`)
+    }
+  }
+
+  if (authUserId) {
     await adminClient
       .from("members")
-      .update({ auth_user_id: authData.user.id })
+      .update({ auth_user_id: authUserId, must_change_password: true })
       .eq("id", data.id)
-  } else if (authError) {
-    console.warn(`No se pudo crear cuenta auth para ${data.email}: ${authError.message}`)
   }
 
   await logActivity({
@@ -99,6 +113,14 @@ export async function createMember(member: TablesInsert<"members">) {
 
 export async function updateMember(id: string, member: TablesUpdate<"members">) {
   const supabase = await createClient()
+
+  const { data: previous, error: prevError } = await supabase
+    .from("members")
+    .select("email, auth_user_id")
+    .eq("id", id)
+    .single()
+  if (prevError) throw prevError
+
   const { data, error } = await supabase
     .from("members")
     .update({ ...member, updated_at: new Date().toISOString() })
@@ -107,6 +129,24 @@ export async function updateMember(id: string, member: TablesUpdate<"members">) 
     .single()
 
   if (error) throw error
+
+  // Si cambió el email, sincronizar con auth.users para evitar que el miembro
+  // pierda acceso al portal (su email actual debe existir en auth para iniciar sesión).
+  const emailChanged =
+    typeof member.email === "string" &&
+    member.email.toLowerCase() !== previous.email.toLowerCase()
+  if (emailChanged && previous.auth_user_id) {
+    const adminClient = createAdminClient()
+    const { error: authError } = await adminClient.auth.admin.updateUserById(
+      previous.auth_user_id,
+      { email: data.email, email_confirm: true },
+    )
+    if (authError) {
+      console.warn(
+        `Email actualizado en members pero no en auth para ${data.email}: ${authError.message}`,
+      )
+    }
+  }
 
   await logActivity({
     action: "member_updated",

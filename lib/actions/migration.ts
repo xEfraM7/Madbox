@@ -28,7 +28,17 @@ export async function migrateMembersToPortal(): Promise<{
   let failed = 0
   const errors: string[] = []
 
+  // Cargar usuarios auth existentes para poder vincular en lugar de fallar
+  // cuando el email ya está registrado en auth.users (p. ej. miembro recreado).
+  const { data: existingAuth } = await adminClient.auth.admin.listUsers()
+  const authByEmail = new Map<string, string>()
+  for (const u of existingAuth?.users ?? []) {
+    if (u.email) authByEmail.set(u.email.toLowerCase(), u.id)
+  }
+
   for (const member of members) {
+    let authUserId: string | null = null
+
     const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
       email: member.email,
       password: DEFAULT_MEMBER_PASSWORD,
@@ -37,16 +47,23 @@ export async function migrateMembersToPortal(): Promise<{
       email_confirm: true,
     })
 
-    if (authError || !authData.user) {
-      failed++
-      errors.push(`${member.email}: ${authError?.message ?? "Error desconocido"}`)
-      continue
+    if (!authError && authData.user) {
+      authUserId = authData.user.id
+    } else {
+      const existingId = authByEmail.get(member.email.toLowerCase())
+      if (existingId) {
+        authUserId = existingId
+      } else {
+        failed++
+        errors.push(`${member.email}: ${authError?.message ?? "Error desconocido"}`)
+        continue
+      }
     }
 
     const { error: updateError } = await adminClient
       .from("members")
       .update({
-        auth_user_id: authData.user.id,
+        auth_user_id: authUserId,
         must_change_password: true,
         updated_at: new Date().toISOString(),
       })
@@ -54,7 +71,7 @@ export async function migrateMembersToPortal(): Promise<{
 
     if (updateError) {
       failed++
-      errors.push(`${member.email}: auth creado pero no vinculado - ${updateError.message}`)
+      errors.push(`${member.email}: auth listo pero no vinculado - ${updateError.message}`)
     } else {
       success++
     }
