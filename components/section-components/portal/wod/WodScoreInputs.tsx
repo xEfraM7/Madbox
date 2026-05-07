@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import type { ScoreType } from "@/lib/constants/wod-score"
+import type { Prescription, ScoreType } from "@/lib/constants/wod-score"
 
 export interface WodScoreInputValues {
   score_type: ScoreType
@@ -11,12 +11,14 @@ export interface WodScoreInputValues {
   rounds: number
   reps_extra: number
   kg: number
+  weights: number[]
 }
 
 interface WodScoreInputsProps {
   values: WodScoreInputValues
   onChange: (next: WodScoreInputValues) => void
-  errors?: Partial<Record<keyof WodScoreInputValues, string>>
+  errors?: Partial<Record<keyof WodScoreInputValues | `weight_${number}`, string>>
+  prescription?: Prescription
 }
 
 function num(v: string): number {
@@ -24,7 +26,7 @@ function num(v: string): number {
   return Number.isFinite(n) && n >= 0 ? n : 0
 }
 
-export function WodScoreInputs({ values, onChange, errors }: WodScoreInputsProps) {
+export function WodScoreInputs({ values, onChange, errors, prescription }: WodScoreInputsProps) {
   const set = <K extends keyof WodScoreInputValues>(k: K, v: WodScoreInputValues[K]) =>
     onChange({ ...values, [k]: v })
 
@@ -102,6 +104,50 @@ export function WodScoreInputs({ values, onChange, errors }: WodScoreInputsProps
             placeholder="Ej: 100"
           />
           {errors?.kg && <p className="text-xs text-destructive">{errors.kg}</p>}
+        </div>
+      )
+    case "sets_reps_rm":
+      if (!prescription || prescription.length === 0) {
+        return (
+          <p className="text-xs italic text-destructive">
+            El slot no tiene prescripción definida.
+          </p>
+        )
+      }
+      return (
+        <div className="space-y-2">
+          <Label className="text-sm">Peso por bloque (kg)</Label>
+          <div className="space-y-1.5">
+            {prescription.map((row, idx) => {
+              const errKey = `weight_${idx}` as const
+              const err = errors?.[errKey]
+              return (
+                <div key={idx} className="space-y-1">
+                  <div className="grid grid-cols-[1fr_1fr] items-center gap-3">
+                    <span className="text-sm tabular-nums text-muted-foreground">
+                      {row.sets} × {row.reps}
+                      {typeof row.percent === "number" ? ` @ ${row.percent}%` : ""}
+                    </span>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      min={0.5}
+                      max={500}
+                      value={values.weights[idx] ?? 0}
+                      onChange={(e) => {
+                        const next = values.weights.slice()
+                        next[idx] = num(e.target.value)
+                        set("weights", next)
+                      }}
+                      placeholder="kg"
+                      aria-label={`Peso bloque ${idx + 1}`}
+                    />
+                  </div>
+                  {err && <p className="text-xs text-destructive">{err}</p>}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )
   }

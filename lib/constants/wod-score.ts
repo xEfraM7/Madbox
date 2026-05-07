@@ -1,4 +1,12 @@
-export type ScoreType = 'for_time' | 'amrap' | 'weight'
+export type ScoreType = 'for_time' | 'amrap' | 'weight' | 'sets_reps_rm'
+
+export interface PrescriptionRow {
+  sets: number
+  reps: number
+  percent?: number
+}
+
+export type Prescription = PrescriptionRow[]
 
 export interface WodScore {
   score_type: ScoreType
@@ -6,38 +14,53 @@ export interface WodScore {
   score_rounds: number | null
   score_reps: number | null
   score_kg: number | null
+  score_weights?: number[] | null
 }
 
 export const SCORE_TYPE_LABEL: Record<ScoreType, string> = {
   for_time: 'For Time',
   amrap: 'AMRAP',
   weight: 'Peso',
+  sets_reps_rm: 'Sets × Reps × %RM',
 }
 
-export const SCORE_TYPE_ORDER: ScoreType[] = ['for_time', 'amrap', 'weight']
+export const SCORE_TYPE_ORDER: ScoreType[] = ['for_time', 'amrap', 'weight', 'sets_reps_rm']
 
 // Más es mejor para todos excepto for_time.
 export function isLowerBetter(t: ScoreType): boolean {
   return t === 'for_time'
 }
 
-// Valor único comparable. Para AMRAP: rounds * 1000 + reps_extra (reps por round siempre < 1000 en CrossFit).
-export function rankableValue(s: WodScore): number {
+// Volumen total: Σ (peso × sets × reps) por cada bloque de la prescripción.
+export function computeVolume(weights: number[], prescription: Prescription): number {
+  return prescription.reduce((sum, block, i) => {
+    const w = weights[i] ?? 0
+    return sum + w * block.sets * block.reps
+  }, 0)
+}
+
+// Valor único comparable. Para AMRAP: rounds * 1000 + reps_extra.
+// Para sets_reps_rm: volumen total cuando hay prescripción disponible.
+export function rankableValue(s: WodScore, prescription?: Prescription): number {
   switch (s.score_type) {
     case 'for_time': return s.score_seconds ?? 0
     case 'amrap':    return (s.score_rounds ?? 0) * 1000 + (s.score_reps ?? 0)
     case 'weight':   return Number(s.score_kg ?? 0)
+    case 'sets_reps_rm': {
+      if (!prescription || !s.score_weights) return 0
+      return computeVolume(s.score_weights, prescription)
+    }
   }
 }
 
-export function compareScores(a: WodScore, b: WodScore): number {
+export function compareScores(a: WodScore, b: WodScore, prescription?: Prescription): number {
   if (a.score_type !== b.score_type) return 0
-  const va = rankableValue(a)
-  const vb = rankableValue(b)
+  const va = rankableValue(a, prescription)
+  const vb = rankableValue(b, prescription)
   return isLowerBetter(a.score_type) ? va - vb : vb - va
 }
 
-export function formatScore(s: WodScore): string {
+export function formatScore(s: WodScore, prescription?: Prescription): string {
   switch (s.score_type) {
     case 'for_time': {
       const sec = s.score_seconds ?? 0
@@ -52,6 +75,16 @@ export function formatScore(s: WodScore): string {
     }
     case 'weight':
       return `${Number(s.score_kg ?? 0).toLocaleString('es-VE')} kg`
+    case 'sets_reps_rm': {
+      const weights = s.score_weights ?? []
+      if (prescription) {
+        const vol = computeVolume(weights, prescription)
+        return `${vol.toLocaleString('es-VE')} kg`
+      }
+      // Fallback: lista de pesos sin volumen calculable
+      if (weights.length === 0) return '—'
+      return weights.map((w) => `${w}kg`).join(' / ')
+    }
   }
 }
 

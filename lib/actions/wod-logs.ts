@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { logActivity } from "./activity"
 import {
   type ScoreType,
+  type Prescription,
   compareScores,
   todayCaracasISO,
 } from "@/lib/constants/wod-score"
@@ -27,6 +28,7 @@ export interface WodLog {
   score_rounds: number | null
   score_reps: number | null
   score_kg: number | null
+  score_weights: number[] | null
   rx: boolean
   notes: string | null
   created_at: string
@@ -40,6 +42,7 @@ export interface UpsertWodLogInput {
   score_rounds?: number | null
   score_reps?: number | null
   score_kg?: number | null
+  score_weights?: number[] | null
   rx: boolean
   notes?: string | null
 }
@@ -62,6 +65,7 @@ export interface WodLeaderboardEntry {
   score_rounds: number | null
   score_reps: number | null
   score_kg: number | null
+  score_weights: number[] | null
   rx: boolean
   position: number
 }
@@ -114,6 +118,9 @@ function rowToWodLog(row: any): WodLog {
     score_rounds: row.score_rounds,
     score_reps: row.score_reps,
     score_kg: row.score_kg ? Number(row.score_kg) : null,
+    score_weights: Array.isArray(row.score_weights)
+      ? row.score_weights.map((w: unknown) => Number(w)).filter((n: number) => Number.isFinite(n))
+      : null,
     rx: !!row.rx,
     notes: row.notes,
     created_at: row.created_at,
@@ -251,6 +258,26 @@ export async function upsertWodLog(input: UpsertWodLogInput): Promise<WodLog> {
       if (kg < 0.5 || kg > 500) errs.push("Peso fuera de rango (0.5 – 500 kg)")
       break
     }
+    case "sets_reps_rm": {
+      if (!slot.prescription || slot.prescription.length === 0) {
+        errs.push("El slot no tiene una prescripción definida")
+        break
+      }
+      const weights = input.score_weights ?? []
+      if (weights.length !== slot.prescription.length) {
+        errs.push(
+          `Debes registrar un peso por cada bloque (${slot.prescription.length})`,
+        )
+        break
+      }
+      const invalid = weights.some(
+        (w) => typeof w !== "number" || !Number.isFinite(w) || w < 0.5 || w > 500,
+      )
+      if (invalid) {
+        errs.push("Algún peso fuera de rango (0.5 – 500 kg)")
+      }
+      break
+    }
   }
   if (errs.length > 0) throw new Error(errs[0])
 
@@ -265,6 +292,8 @@ export async function upsertWodLog(input: UpsertWodLogInput): Promise<WodLog> {
     score_rounds: input.score_type === "amrap" ? input.score_rounds ?? null : null,
     score_reps: input.score_type === "amrap" ? input.score_reps ?? null : null,
     score_kg: input.score_type === "weight" ? input.score_kg ?? null : null,
+    score_weights:
+      input.score_type === "sets_reps_rm" ? input.score_weights ?? null : null,
     rx: input.rx,
     notes: input.notes && input.notes.trim().length > 0 ? input.notes.trim() : null,
     updated_at: new Date().toISOString(),
@@ -337,6 +366,18 @@ export async function getLeaderboardForSlot(input: {
   const limit = input.limit ?? 10
   const admin = createAdminClient()
 
+  // 0. Cargar el slot del schedule (necesitamos prescription para sets_reps_rm)
+  const { data: scheduleRow, error: scErr } = await admin
+    .from("routine_schedules")
+    .select("score_slots")
+    .eq("id", input.routine_id)
+    .maybeSingle()
+  if (scErr) throw scErr
+  const slotMeta = parseScoreSlots(scheduleRow?.score_slots).find(
+    (s) => s.id === input.slot_id,
+  )
+  const prescription: Prescription | undefined = slotMeta?.prescription
+
   // 1. Recuperar plan_ids del schedule
   const { data: planRows, error: pErr } = await admin
     .from("routine_schedule_plans")
@@ -382,16 +423,21 @@ export async function getLeaderboardForSlot(input: {
     .in("member_id", memberIds)
   if (lErr) throw lErr
 
-  // 4. Ordenar reusando compareScores; tomar Top N
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // 4. Ordenar reusando compareScores (con prescription para sets_reps_rm); tomar Top N
   const sorted = (logs ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((row: any) => ({
-      member_id: row.member_id,
+      member_id: row.member_id as string,
       score_type: row.score_type as ScoreType,
-      score_seconds: row.score_seconds,
-      score_rounds: row.score_rounds,
-      score_reps: row.score_reps,
+      score_seconds: row.score_seconds as number | null,
+      score_rounds: row.score_rounds as number | null,
+      score_reps: row.score_reps as number | null,
       score_kg: row.score_kg ? Number(row.score_kg) : null,
+      score_weights: Array.isArray(row.score_weights)
+        ? (row.score_weights as unknown[])
+            .map((w) => Number(w))
+            .filter((n) => Number.isFinite(n))
+        : null,
       rx: !!row.rx,
     }))
     .sort((a, b) =>
@@ -402,6 +448,7 @@ export async function getLeaderboardForSlot(input: {
           score_rounds: a.score_rounds,
           score_reps: a.score_reps,
           score_kg: a.score_kg,
+          score_weights: a.score_weights,
         },
         {
           score_type: b.score_type,
@@ -409,7 +456,9 @@ export async function getLeaderboardForSlot(input: {
           score_rounds: b.score_rounds,
           score_reps: b.score_reps,
           score_kg: b.score_kg,
+          score_weights: b.score_weights,
         },
+        prescription,
       ),
     )
     .slice(0, limit)
@@ -425,6 +474,7 @@ export async function getLeaderboardForSlot(input: {
       score_rounds: s.score_rounds,
       score_reps: s.score_reps,
       score_kg: s.score_kg,
+      score_weights: s.score_weights,
       rx: s.rx,
       position: i + 1,
     }

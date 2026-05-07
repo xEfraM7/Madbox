@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { getLeaderboardForSlot } from "@/lib/actions/wod-logs"
-import { formatScore } from "@/lib/constants/wod-score"
+import { formatScore, type Prescription } from "@/lib/constants/wod-score"
 
 interface Props {
   routineId: string
@@ -16,6 +16,7 @@ interface Props {
   defaultGender: "male" | "female"
   onOpenFull: () => void
   highlightMemberId?: string
+  prescription?: Prescription
 }
 
 export function WodMiniLeaderboard({
@@ -24,6 +25,7 @@ export function WodMiniLeaderboard({
   defaultGender,
   onOpenFull,
   highlightMemberId,
+  prescription,
 }: Props) {
   const [gender, setGender] = useState<"male" | "female">(defaultGender)
 
@@ -102,7 +104,8 @@ export function WodMiniLeaderboard({
                     score_rounds: e.score_rounds,
                     score_reps: e.score_reps,
                     score_kg: e.score_kg,
-                  })}
+                    score_weights: e.score_weights,
+                  }, prescription)}
                 </span>
                 {e.rx && <Badge variant="default" className="text-[9px] px-1 py-0">RX</Badge>}
               </li>

@@ -238,6 +238,7 @@ export function MemberDetailModal({ memberId, onClose }: MemberDetailModalProps)
                               score_rounds: w.score_rounds,
                               score_reps: w.score_reps,
                               score_kg: w.score_kg,
+                              score_weights: w.score_weights,
                             })}
                           </span>
                           <Badge variant={w.rx ? "default" : "outline"} className="text-[10px] shrink-0">

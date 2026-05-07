@@ -38,16 +38,20 @@ const EMPTY_VALUES: WodScoreInputValues = {
   minutes: 0, seconds: 0,
   rounds: 0, reps_extra: 0,
   kg: 0,
+  weights: [],
 }
+
+type ErrorKey = keyof WodScoreInputValues | `weight_${number}`
 
 export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }: Props) {
   const queryClient = useQueryClient()
   const scoreType = slot.score_type
+  const prescription = slot.prescription
 
   const [values, setValues] = useState<WodScoreInputValues>(EMPTY_VALUES)
   const [rx, setRx] = useState<boolean>(false)
   const [notes, setNotes] = useState<string>("")
-  const [errors, setErrors] = useState<Partial<Record<keyof WodScoreInputValues, string>>>({})
+  const [errors, setErrors] = useState<Partial<Record<ErrorKey, string>>>({})
 
   useEffect(() => {
     if (!open) return
@@ -62,18 +66,26 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
         rounds: t === "amrap" ? (existingLog.score_rounds ?? 0) : 0,
         reps_extra: t === "amrap" ? (existingLog.score_reps ?? 0) : 0,
         kg: t === "weight" ? Number(existingLog.score_kg ?? 0) : 0,
+        weights:
+          t === "sets_reps_rm" && Array.isArray(existingLog.score_weights)
+            ? existingLog.score_weights.slice()
+            : prescription?.map(() => 0) ?? [],
       })
     } else {
       setRx(false)
       setNotes("")
-      setValues({ ...EMPTY_VALUES, score_type: scoreType })
+      setValues({
+        ...EMPTY_VALUES,
+        score_type: scoreType,
+        weights: scoreType === "sets_reps_rm" ? prescription?.map(() => 0) ?? [] : [],
+      })
     }
     setErrors({})
-  }, [open, existingLog, scoreType])
+  }, [open, existingLog, scoreType, prescription])
 
   const upsertMutation = useMutation({
     mutationFn: async () => {
-      const errs: Partial<Record<keyof WodScoreInputValues, string>> = {}
+      const errs: Partial<Record<ErrorKey, string>> = {}
       let payload: Parameters<typeof upsertWodLog>[0]
       switch (scoreType) {
         case "for_time": {
@@ -111,6 +123,28 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
             slot_id: slot.id,
             score_type: "weight",
             score_kg: values.kg,
+            rx,
+            notes: notes || null,
+          }
+          break
+        }
+        case "sets_reps_rm": {
+          if (!prescription || prescription.length === 0) {
+            throw new Error("El slot no tiene prescripción definida")
+          }
+          const weights = prescription.map(
+            (_, i) => values.weights[i] ?? 0,
+          )
+          weights.forEach((w, i) => {
+            if (w <= 0 || w > 500) {
+              errs[`weight_${i}` as ErrorKey] = "Fuera de rango (0–500 kg)"
+            }
+          })
+          payload = {
+            routine_id: routineId,
+            slot_id: slot.id,
+            score_type: "sets_reps_rm",
+            score_weights: weights,
             rx,
             notes: notes || null,
           }
@@ -167,7 +201,12 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
         </DialogHeader>
 
         <div className="space-y-4">
-          <WodScoreInputs values={values} onChange={(v) => setValues(v)} errors={errors} />
+          <WodScoreInputs
+            values={values}
+            onChange={(v) => setValues(v)}
+            errors={errors}
+            prescription={prescription}
+          />
 
           <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
             <div>

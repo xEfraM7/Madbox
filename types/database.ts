@@ -737,6 +737,7 @@ export type Database = {
           score_rounds: number | null
           score_seconds: number | null
           score_type: string
+          score_weights: Json | null
           slot_id: string
           updated_at: string | null
         }
@@ -753,6 +754,7 @@ export type Database = {
           score_rounds?: number | null
           score_seconds?: number | null
           score_type: string
+          score_weights?: Json | null
           slot_id?: string
           updated_at?: string | null
         }
@@ -769,6 +771,7 @@ export type Database = {
           score_rounds?: number | null
           score_seconds?: number | null
           score_type?: string
+          score_weights?: Json | null
           slot_id?: string
           updated_at?: string | null
         }

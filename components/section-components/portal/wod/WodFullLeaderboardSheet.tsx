@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { getLeaderboardForSlot } from "@/lib/actions/wod-logs"
-import { formatScore } from "@/lib/constants/wod-score"
+import { formatScore, type Prescription } from "@/lib/constants/wod-score"
 
 interface Props {
   open: boolean
@@ -24,6 +24,7 @@ interface Props {
   slotLabel: string
   defaultGender: "male" | "female"
   highlightMemberId?: string
+  prescription?: Prescription
 }
 
 export function WodFullLeaderboardSheet({
@@ -34,6 +35,7 @@ export function WodFullLeaderboardSheet({
   slotLabel,
   defaultGender,
   highlightMemberId,
+  prescription,
 }: Props) {
   const [gender, setGender] = useState<"male" | "female">(defaultGender)
 
@@ -117,7 +119,8 @@ export function WodFullLeaderboardSheet({
                       score_rounds: e.score_rounds,
                       score_reps: e.score_reps,
                       score_kg: e.score_kg,
-                    })}
+                      score_weights: e.score_weights,
+                    }, prescription)}
                   </span>
                   <Badge variant={e.rx ? "default" : "outline"} className="text-[10px]">
                     {e.rx ? "RX" : "S"}
