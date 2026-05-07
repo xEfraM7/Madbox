@@ -602,30 +602,30 @@ export type Database = {
       }
       routine_schedules: {
         Row: {
-          blocks: Json
           content: string
           created_at: string | null
           date: string
           id: string
           name: string | null
+          score_slots: Json
           updated_at: string | null
         }
         Insert: {
-          blocks?: Json
           content?: string
           created_at?: string | null
           date: string
           id?: string
           name?: string | null
+          score_slots?: Json
           updated_at?: string | null
         }
         Update: {
-          blocks?: Json
           content?: string
           created_at?: string | null
           date?: string
           id?: string
           name?: string | null
+          score_slots?: Json
           updated_at?: string | null
         }
         Relationships: []
@@ -725,7 +725,6 @@ export type Database = {
       }
       wod_logs: {
         Row: {
-          block_id: string
           created_at: string | null
           date: string
           id: string
@@ -738,10 +737,10 @@ export type Database = {
           score_rounds: number | null
           score_seconds: number | null
           score_type: string
+          slot_id: string
           updated_at: string | null
         }
         Insert: {
-          block_id?: string
           created_at?: string | null
           date: string
           id?: string
@@ -754,10 +753,10 @@ export type Database = {
           score_rounds?: number | null
           score_seconds?: number | null
           score_type: string
+          slot_id?: string
           updated_at?: string | null
         }
         Update: {
-          block_id?: string
           created_at?: string | null
           date?: string
           id?: string
@@ -770,6 +769,7 @@ export type Database = {
           score_rounds?: number | null
           score_seconds?: number | null
           score_type?: string
+          slot_id?: string
           updated_at?: string | null
         }
         Relationships: [
