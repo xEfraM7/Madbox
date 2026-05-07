@@ -7,12 +7,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { getLeaderboardForBlock } from "@/lib/actions/wod-logs"
+import { getLeaderboardForSlot } from "@/lib/actions/wod-logs"
 import { formatScore } from "@/lib/constants/wod-score"
 
 interface Props {
   routineId: string
-  blockId: string
+  slotId: string
   defaultGender: "male" | "female"
   onOpenFull: () => void
   highlightMemberId?: string
@@ -20,7 +20,7 @@ interface Props {
 
 export function WodMiniLeaderboard({
   routineId,
-  blockId,
+  slotId,
   defaultGender,
   onOpenFull,
   highlightMemberId,
@@ -28,9 +28,9 @@ export function WodMiniLeaderboard({
   const [gender, setGender] = useState<"male" | "female">(defaultGender)
 
   const { data, isLoading } = useQuery({
-    queryKey: ["wod-leaderboard", routineId, blockId, gender],
+    queryKey: ["wod-leaderboard", routineId, slotId, gender],
     queryFn: () =>
-      getLeaderboardForBlock({ routine_id: routineId, block_id: blockId, gender, limit: 3 }),
+      getLeaderboardForSlot({ routine_id: routineId, slot_id: slotId, gender, limit: 3 }),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -67,7 +67,7 @@ export function WodMiniLeaderboard({
         </div>
       ) : entries.length === 0 ? (
         <p className="text-xs text-muted-foreground italic text-center py-2">
-          Aún nadie ha registrado este bloque.
+          Aún nadie ha registrado este slot.
         </p>
       ) : (
         <ul className="space-y-1">

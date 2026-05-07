@@ -13,15 +13,15 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { getLeaderboardForBlock } from "@/lib/actions/wod-logs"
+import { getLeaderboardForSlot } from "@/lib/actions/wod-logs"
 import { formatScore } from "@/lib/constants/wod-score"
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   routineId: string
-  blockId: string
-  blockLabel: string
+  slotId: string
+  slotLabel: string
   defaultGender: "male" | "female"
   highlightMemberId?: string
 }
@@ -30,17 +30,17 @@ export function WodFullLeaderboardSheet({
   open,
   onOpenChange,
   routineId,
-  blockId,
-  blockLabel,
+  slotId,
+  slotLabel,
   defaultGender,
   highlightMemberId,
 }: Props) {
   const [gender, setGender] = useState<"male" | "female">(defaultGender)
 
   const { data, isLoading } = useQuery({
-    queryKey: ["wod-leaderboard", routineId, blockId, gender, "full"],
+    queryKey: ["wod-leaderboard", routineId, slotId, gender, "full"],
     queryFn: () =>
-      getLeaderboardForBlock({ routine_id: routineId, block_id: blockId, gender, limit: 10 }),
+      getLeaderboardForSlot({ routine_id: routineId, slot_id: slotId, gender, limit: 10 }),
     staleTime: 5 * 60 * 1000,
     enabled: open,
   })
@@ -54,7 +54,7 @@ export function WodFullLeaderboardSheet({
           <SheetTitle className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-primary" /> Top 10
           </SheetTitle>
-          <SheetDescription>{blockLabel}</SheetDescription>
+          <SheetDescription>{slotLabel}</SheetDescription>
         </SheetHeader>
 
         <div className="mt-3 flex gap-1 rounded-md bg-muted/40 p-1 w-fit">
@@ -81,7 +81,7 @@ export function WodFullLeaderboardSheet({
             </div>
           ) : entries.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8 italic">
-              Aún nadie ha registrado este bloque hoy.
+              Aún nadie ha registrado este slot hoy.
             </p>
           ) : (
             entries.map((e) => {

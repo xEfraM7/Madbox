@@ -21,22 +21,15 @@ import {
   deleteWodLog,
   type WodLog,
 } from "@/lib/actions/wod-logs"
-import {
-  type ScoreType,
-  SCORE_TYPE_LABEL,
-} from "@/lib/constants/wod-score"
-import {
-  BLOCK_META,
-  type RoutineBlock,
-} from "@/lib/constants/routine-blocks"
+import { SCORE_TYPE_LABEL } from "@/lib/constants/wod-score"
+import type { ScoreSlot } from "@/lib/constants/score-slots"
 import { WodScoreInputs, type WodScoreInputValues } from "./WodScoreInputs"
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   routineId: string
-  block: RoutineBlock
-  scoreType: ScoreType
+  slot: ScoreSlot
   existingLog: WodLog | null
 }
 
@@ -47,19 +40,9 @@ const EMPTY_VALUES: WodScoreInputValues = {
   reps: 0, kg: 0,
 }
 
-function blockHeadline(block: RoutineBlock): string {
-  switch (block.type) {
-    case "amrap": return `${BLOCK_META.amrap.label} ${block.minutes} min`
-    case "for_time": return BLOCK_META.for_time.label + (block.time_cap_min ? ` · cap ${block.time_cap_min} min` : "")
-    case "rft": return `${BLOCK_META.rft.label} · ${block.rounds} rounds`
-    case "for_reps": return `${BLOCK_META.for_reps.label} · ${block.target_reps} reps`
-    case "strength": return `${BLOCK_META.strength.label}: ${block.exercise || "(sin ejercicio)"}`
-    default: return BLOCK_META[block.type].label
-  }
-}
-
-export function LogWodModal({ open, onOpenChange, routineId, block, scoreType, existingLog }: Props) {
+export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }: Props) {
   const queryClient = useQueryClient()
+  const scoreType = slot.score_type
 
   const [values, setValues] = useState<WodScoreInputValues>(EMPTY_VALUES)
   const [rx, setRx] = useState<boolean>(false)
@@ -99,7 +82,7 @@ export function LogWodModal({ open, onOpenChange, routineId, block, scoreType, e
           if (total <= 0) errs.seconds = "Ingresa un tiempo válido"
           payload = {
             routine_id: routineId,
-            block_id: block.id,
+            slot_id: slot.id,
             score_type: "for_time",
             score_seconds: total,
             rx,
@@ -113,7 +96,7 @@ export function LogWodModal({ open, onOpenChange, routineId, block, scoreType, e
           if (values.rounds + values.reps_extra === 0) errs.rounds = "Score vacío"
           payload = {
             routine_id: routineId,
-            block_id: block.id,
+            slot_id: slot.id,
             score_type: "amrap",
             score_rounds: values.rounds,
             score_reps: values.reps_extra,
@@ -126,7 +109,7 @@ export function LogWodModal({ open, onOpenChange, routineId, block, scoreType, e
           if (values.reps <= 0) errs.reps = "Debe ser > 0"
           payload = {
             routine_id: routineId,
-            block_id: block.id,
+            slot_id: slot.id,
             score_type: "for_reps",
             score_reps: values.reps,
             rx,
@@ -138,7 +121,7 @@ export function LogWodModal({ open, onOpenChange, routineId, block, scoreType, e
           if (values.kg <= 0 || values.kg > 500) errs.kg = "Fuera de rango (0–500 kg)"
           payload = {
             routine_id: routineId,
-            block_id: block.id,
+            slot_id: slot.id,
             score_type: "weight",
             score_kg: values.kg,
             rx,
@@ -189,7 +172,7 @@ export function LogWodModal({ open, onOpenChange, routineId, block, scoreType, e
         <DialogHeader>
           <DialogTitle>{existingLog ? "Editar WOD" : "Registrar WOD"}</DialogTitle>
           <DialogDescription>
-            <span className="font-medium">{blockHeadline(block)}</span>
+            <span className="font-medium">{slot.name}</span>
             <span className="ml-1.5 text-xs text-muted-foreground">
               · score: {SCORE_TYPE_LABEL[scoreType]}
             </span>

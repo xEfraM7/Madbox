@@ -1,17 +1,17 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Calendar, Loader2 } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import {
   getRoutineForToday,
   getMyWodLogsForRoutine,
 } from "@/lib/actions/wod-logs"
-import { CONDITIONING_SCORE_TYPE } from "@/lib/constants/routine-blocks"
-import { WodBlockCard } from "./WodBlockCard"
-import { InfoBlockCard } from "./InfoBlockCard"
-import { useEffect, useState } from "react"
+import { WodSlotCard } from "./WodSlotCard"
 import { createClient } from "@/utils/supabase/client"
 
 export default function PortalWodMainComponent() {
@@ -96,11 +96,25 @@ export default function PortalWodMainComponent() {
     )
   }
 
-  const sortedBlocks = [...routine.blocks].sort((a, b) => a.order - b.order)
-  const registrableCount = sortedBlocks.filter((b) => CONDITIONING_SCORE_TYPE[b.type]).length
-  const dateLabel = format(parseISO(routine.date + "T00:00:00"), "EEEE, d 'de' MMMM", { locale: es })
+  // Caso límite: rutina existe pero sin contenido ni slots → tratar como "no hay rutina"
+  if (!routine.content?.trim() && routine.score_slots.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">WOD del día</h1>
+        </div>
+        <div className="rounded-xl border border-dashed p-10 text-center space-y-3">
+          <Calendar className="h-10 w-10 mx-auto text-muted-foreground" />
+          <p className="text-sm font-medium">La rutina de hoy está vacía.</p>
+          <p className="text-xs text-muted-foreground">Avísale al admin del gimnasio.</p>
+        </div>
+      </div>
+    )
+  }
 
-  const logsByBlockId = new Map(myLogs.map((l) => [l.block_id, l]))
+  const sortedSlots = [...routine.score_slots].sort((a, b) => a.order - b.order)
+  const dateLabel = format(parseISO(routine.date + "T00:00:00"), "EEEE, d 'de' MMMM", { locale: es })
+  const logsBySlotId = new Map(myLogs.map((l) => [l.slot_id, l]))
 
   return (
     <div className="space-y-4">
@@ -111,27 +125,33 @@ export default function PortalWodMainComponent() {
         <h1 className="text-2xl font-bold tracking-tight mt-0.5">
           {routine.name ?? "WOD del día"}
         </h1>
-        <p className="text-xs text-muted-foreground mt-1">
-          {registrableCount} {registrableCount === 1 ? "bloque registrable" : "bloques registrables"}
-        </p>
+        {sortedSlots.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {sortedSlots.length} {sortedSlots.length === 1 ? "slot de score" : "slots de score"}
+          </p>
+        )}
       </div>
 
-      <div className="space-y-3">
-        {sortedBlocks.map((block) =>
-          CONDITIONING_SCORE_TYPE[block.type] ? (
-            <WodBlockCard
-              key={block.id}
+      {routine.content?.trim() && (
+        <div className="rounded-xl border border-border bg-card/40 p-4 prose prose-invert prose-sm max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{routine.content}</ReactMarkdown>
+        </div>
+      )}
+
+      {sortedSlots.length > 0 && (
+        <div className="space-y-3">
+          {sortedSlots.map((slot) => (
+            <WodSlotCard
+              key={slot.id}
               routineId={routine.id}
-              block={block}
-              myLog={logsByBlockId.get(block.id) ?? null}
+              slot={slot}
+              myLog={logsBySlotId.get(slot.id) ?? null}
               defaultGender={me.gender}
               myMemberId={me.memberId}
             />
-          ) : (
-            <InfoBlockCard key={block.id} block={block} />
-          ),
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
