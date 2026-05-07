@@ -10,10 +10,9 @@ import {
   todayCaracasISO,
 } from "@/lib/constants/wod-score"
 import {
-  parseBlocks,
-  getScoreTypeForBlock,
-  type RoutineBlock,
-} from "@/lib/constants/routine-blocks"
+  parseScoreSlots,
+  type ScoreSlot,
+} from "@/lib/constants/score-slots"
 
 // ─── Tipos públicos ──────────────────────────────────────────
 
@@ -21,7 +20,7 @@ export interface WodLog {
   id: string
   member_id: string
   routine_id: string
-  block_id: string
+  slot_id: string
   date: string
   score_type: ScoreType
   score_seconds: number | null
@@ -35,7 +34,7 @@ export interface WodLog {
 
 export interface UpsertWodLogInput {
   routine_id: string
-  block_id: string
+  slot_id: string
   score_type: ScoreType
   score_seconds?: number | null
   score_rounds?: number | null
@@ -50,7 +49,7 @@ export interface RoutineForMemberToday {
   date: string
   name: string | null
   content: string
-  blocks: RoutineBlock[]
+  score_slots: ScoreSlot[]
   plan_ids: string[]
 }
 
@@ -69,7 +68,7 @@ export interface WodLeaderboardEntry {
 
 export interface WodLeaderboardResult {
   routine_id: string
-  block_id: string
+  slot_id: string
   gender: "male" | "female"
   entries: WodLeaderboardEntry[]
 }
@@ -108,7 +107,7 @@ function rowToWodLog(row: any): WodLog {
     id: row.id,
     member_id: row.member_id,
     routine_id: row.routine_id,
-    block_id: row.block_id,
+    slot_id: row.slot_id,
     date: row.date,
     score_type: row.score_type as ScoreType,
     score_seconds: row.score_seconds,
@@ -133,7 +132,7 @@ export async function getRoutineForToday(): Promise<RoutineForMemberToday | null
   const { data, error } = await supabase
     .from("routine_schedule_plans")
     .select(
-      "schedule_id, plan_id, routine_schedules!inner(id, date, name, content, blocks)",
+      "schedule_id, plan_id, routine_schedules!inner(id, date, name, content, score_slots)",
     )
     .eq("plan_id", me.plan_id)
     .eq("routine_schedules.date", today)
@@ -147,7 +146,6 @@ export async function getRoutineForToday(): Promise<RoutineForMemberToday | null
     : data.routine_schedules
   if (!rs) return null
 
-  // Recuperar todos los plan_ids del schedule (para el leaderboard)
   const { data: allPlans, error: pErr } = await supabase
     .from("routine_schedule_plans")
     .select("plan_id")
@@ -159,7 +157,7 @@ export async function getRoutineForToday(): Promise<RoutineForMemberToday | null
     date: rs.date,
     name: rs.name ?? null,
     content: rs.content ?? "",
-    blocks: parseBlocks(rs.blocks),
+    score_slots: parseScoreSlots(rs.score_slots),
     plan_ids: (allPlans ?? []).map((r) => r.plan_id),
   }
 }
@@ -202,8 +200,8 @@ export async function upsertWodLog(input: UpsertWodLogInput): Promise<WodLog> {
   if (!me) throw new Error("No autenticado")
   if (!me.plan_id) throw new Error("No tienes plan asignado")
 
-  if (!input.routine_id || !input.block_id) {
-    throw new Error("Datos de rutina/bloque incompletos")
+  if (!input.routine_id || !input.slot_id) {
+    throw new Error("Datos de rutina/slot incompletos")
   }
   if ((input.notes ?? "").length > 500) {
     throw new Error("Las notas no pueden exceder 500 caracteres")
@@ -211,25 +209,21 @@ export async function upsertWodLog(input: UpsertWodLogInput): Promise<WodLog> {
 
   const supabase = await createClient()
 
-  // 1. Validar que el schedule existe, contiene el block y aplica al plan del miembro
+  // 1. Validar que el schedule existe, contiene el slot y aplica al plan del miembro
   const { data: schedule, error: sErr } = await supabase
     .from("routine_schedules")
-    .select("id, date, blocks, routine_schedule_plans(plan_id)")
+    .select("id, date, score_slots, routine_schedule_plans(plan_id)")
     .eq("id", input.routine_id)
     .maybeSingle()
   if (sErr) throw sErr
   if (!schedule) throw new Error("Rutina no encontrada")
 
-  const blocks = parseBlocks(schedule.blocks)
-  const block = blocks.find((b) => b.id === input.block_id)
-  if (!block) throw new Error("Bloque no encontrado en la rutina")
+  const slots = parseScoreSlots(schedule.score_slots)
+  const slot = slots.find((s) => s.id === input.slot_id)
+  if (!slot) throw new Error("Slot no encontrado en la rutina")
 
-  const expectedScoreType = getScoreTypeForBlock(block)
-  if (!expectedScoreType) {
-    throw new Error("Este bloque no es registrable")
-  }
-  if (expectedScoreType !== input.score_type) {
-    throw new Error("El tipo de score no corresponde al bloque")
+  if (slot.score_type !== input.score_type) {
+    throw new Error("El tipo de score no corresponde al slot")
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,7 +263,7 @@ export async function upsertWodLog(input: UpsertWodLogInput): Promise<WodLog> {
   const payload = {
     member_id: me.id,
     routine_id: input.routine_id,
-    block_id: input.block_id,
+    slot_id: input.slot_id,
     date: schedule.date,
     score_type: input.score_type,
     score_seconds: input.score_type === "for_time" ? input.score_seconds ?? null : null,
@@ -286,7 +280,7 @@ export async function upsertWodLog(input: UpsertWodLogInput): Promise<WodLog> {
 
   const { data, error } = await supabase
     .from("wod_logs")
-    .upsert(payload, { onConflict: "member_id,routine_id,block_id" })
+    .upsert(payload, { onConflict: "member_id,routine_id,slot_id" })
     .select("*")
     .single()
   if (error) throw error
@@ -336,9 +330,9 @@ export async function deleteWodLog(id: string): Promise<void> {
 
 // ─── Leaderboard ─────────────────────────────────────────────
 
-export async function getLeaderboardForBlock(input: {
+export async function getLeaderboardForSlot(input: {
   routine_id: string
-  block_id: string
+  slot_id: string
   gender: "male" | "female"
   limit?: number
 }): Promise<WodLeaderboardResult> {
@@ -361,7 +355,7 @@ export async function getLeaderboardForBlock(input: {
   if (planIds.length === 0) {
     return {
       routine_id: input.routine_id,
-      block_id: input.block_id,
+      slot_id: input.slot_id,
       gender: input.gender,
       entries: [],
     }
@@ -378,7 +372,7 @@ export async function getLeaderboardForBlock(input: {
   if (!members || members.length === 0) {
     return {
       routine_id: input.routine_id,
-      block_id: input.block_id,
+      slot_id: input.slot_id,
       gender: input.gender,
       entries: [],
     }
@@ -387,12 +381,12 @@ export async function getLeaderboardForBlock(input: {
   const memberIds = members.map((m) => m.id)
   const memberMap = new Map(members.map((m) => [m.id, m]))
 
-  // 3. Logs del bloque para esos miembros
+  // 3. Logs del slot para esos miembros
   const { data: logs, error: lErr } = await admin
     .from("wod_logs")
     .select("*")
     .eq("routine_id", input.routine_id)
-    .eq("block_id", input.block_id)
+    .eq("slot_id", input.slot_id)
     .in("member_id", memberIds)
   if (lErr) throw lErr
 
@@ -446,7 +440,7 @@ export async function getLeaderboardForBlock(input: {
 
   return {
     routine_id: input.routine_id,
-    block_id: input.block_id,
+    slot_id: input.slot_id,
     gender: input.gender,
     entries,
   }
