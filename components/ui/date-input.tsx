@@ -43,7 +43,7 @@ export function DateInput({ value, onChange, placeholder = "Día/Mes/Año", disa
   const weekDays = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           type="button"
