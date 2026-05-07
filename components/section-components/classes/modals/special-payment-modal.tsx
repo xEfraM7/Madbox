@@ -110,7 +110,12 @@ export function SpecialPaymentModal({ open, onOpenChange }: SpecialPaymentModalP
             <div className="grid gap-2">
               <Label htmlFor="member_id">Cliente</Label>
               <MemberSearchSelect
-                members={members.map((m: any) => ({ id: m.id, name: m.name, email: m.email }))}
+                members={members.map((m: any) => ({
+                  id: m.id,
+                  name: m.name,
+                  email: m.email,
+                  status: m.status,
+                }))}
                 value={member_id}
                 onValueChange={(value) => setValue("member_id", value)}
               />
