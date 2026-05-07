@@ -28,7 +28,7 @@ export function parseScoreSlots(raw: unknown): ScoreSlot[] {
       typeof (item as any).id === "string" &&
       typeof (item as any).order === "number" &&
       typeof (item as any).name === "string" &&
-      ["for_time", "amrap", "for_reps", "weight"].includes((item as any).score_type)
+      ["for_time", "amrap", "weight"].includes((item as any).score_type)
     ) {
       valid.push({
         id: (item as any).id,

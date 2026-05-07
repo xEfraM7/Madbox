@@ -37,7 +37,7 @@ const EMPTY_VALUES: WodScoreInputValues = {
   score_type: "for_time",
   minutes: 0, seconds: 0,
   rounds: 0, reps_extra: 0,
-  reps: 0, kg: 0,
+  kg: 0,
 }
 
 export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }: Props) {
@@ -61,7 +61,6 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
         seconds: t === "for_time" ? (existingLog.score_seconds ?? 0) % 60 : 0,
         rounds: t === "amrap" ? (existingLog.score_rounds ?? 0) : 0,
         reps_extra: t === "amrap" ? (existingLog.score_reps ?? 0) : 0,
-        reps: t === "for_reps" ? (existingLog.score_reps ?? 0) : 0,
         kg: t === "weight" ? Number(existingLog.score_kg ?? 0) : 0,
       })
     } else {
@@ -100,18 +99,6 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
             score_type: "amrap",
             score_rounds: values.rounds,
             score_reps: values.reps_extra,
-            rx,
-            notes: notes || null,
-          }
-          break
-        }
-        case "for_reps": {
-          if (values.reps <= 0) errs.reps = "Debe ser > 0"
-          payload = {
-            routine_id: routineId,
-            slot_id: slot.id,
-            score_type: "for_reps",
-            score_reps: values.reps,
             rx,
             notes: notes || null,
           }

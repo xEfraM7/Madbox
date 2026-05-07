@@ -246,11 +246,6 @@ export async function upsertWodLog(input: UpsertWodLogInput): Promise<WodLog> {
       if (r < 0 || reps < 0 || r + reps === 0) errs.push("Rounds o reps inválidos")
       break
     }
-    case "for_reps":
-      if (!input.score_reps || input.score_reps < 1 || input.score_reps > 99999) {
-        errs.push("Reps fuera de rango (1 – 99999)")
-      }
-      break
     case "weight": {
       const kg = input.score_kg ?? 0
       if (kg < 0.5 || kg > 500) errs.push("Peso fuera de rango (0.5 – 500 kg)")
@@ -268,10 +263,7 @@ export async function upsertWodLog(input: UpsertWodLogInput): Promise<WodLog> {
     score_type: input.score_type,
     score_seconds: input.score_type === "for_time" ? input.score_seconds ?? null : null,
     score_rounds: input.score_type === "amrap" ? input.score_rounds ?? null : null,
-    score_reps:
-      input.score_type === "amrap" || input.score_type === "for_reps"
-        ? input.score_reps ?? null
-        : null,
+    score_reps: input.score_type === "amrap" ? input.score_reps ?? null : null,
     score_kg: input.score_type === "weight" ? input.score_kg ?? null : null,
     rx: input.rx,
     notes: input.notes && input.notes.trim().length > 0 ? input.notes.trim() : null,

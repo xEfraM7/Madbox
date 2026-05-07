@@ -1,4 +1,4 @@
-export type ScoreType = 'for_time' | 'amrap' | 'for_reps' | 'weight'
+export type ScoreType = 'for_time' | 'amrap' | 'weight'
 
 export interface WodScore {
   score_type: ScoreType
@@ -11,11 +11,10 @@ export interface WodScore {
 export const SCORE_TYPE_LABEL: Record<ScoreType, string> = {
   for_time: 'For Time',
   amrap: 'AMRAP',
-  for_reps: 'For Reps',
   weight: 'Peso',
 }
 
-export const SCORE_TYPE_ORDER: ScoreType[] = ['for_time', 'amrap', 'for_reps', 'weight']
+export const SCORE_TYPE_ORDER: ScoreType[] = ['for_time', 'amrap', 'weight']
 
 // Más es mejor para todos excepto for_time.
 export function isLowerBetter(t: ScoreType): boolean {
@@ -27,7 +26,6 @@ export function rankableValue(s: WodScore): number {
   switch (s.score_type) {
     case 'for_time': return s.score_seconds ?? 0
     case 'amrap':    return (s.score_rounds ?? 0) * 1000 + (s.score_reps ?? 0)
-    case 'for_reps': return s.score_reps ?? 0
     case 'weight':   return Number(s.score_kg ?? 0)
   }
 }
@@ -52,8 +50,6 @@ export function formatScore(s: WodScore): string {
       const reps = s.score_reps ?? 0
       return reps > 0 ? `${r} + ${reps}` : `${r} rounds`
     }
-    case 'for_reps':
-      return `${s.score_reps ?? 0} reps`
     case 'weight':
       return `${Number(s.score_kg ?? 0).toLocaleString('es-VE')} kg`
   }

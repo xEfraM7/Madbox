@@ -10,7 +10,6 @@ export interface WodScoreInputValues {
   seconds: number
   rounds: number
   reps_extra: number
-  reps: number
   kg: number
 }
 
@@ -86,22 +85,6 @@ export function WodScoreInputs({ values, onChange, errors }: WodScoreInputsProps
             />
             {errors?.reps_extra && <p className="text-xs text-destructive">{errors.reps_extra}</p>}
           </div>
-        </div>
-      )
-    case "for_reps":
-      return (
-        <div className="space-y-1.5">
-          <Label htmlFor="reps" className="text-sm">Total reps</Label>
-          <Input
-            id="reps"
-            type="number"
-            min={1}
-            max={99999}
-            value={values.reps}
-            onChange={(e) => set("reps", num(e.target.value))}
-            placeholder="Ej: 150"
-          />
-          {errors?.reps && <p className="text-xs text-destructive">{errors.reps}</p>}
         </div>
       )
     case "weight":
