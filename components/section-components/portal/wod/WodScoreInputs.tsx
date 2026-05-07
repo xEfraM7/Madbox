@@ -4,14 +4,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { Prescription, ScoreType } from "@/lib/constants/wod-score"
 
+export type NumOrEmpty = number | ""
+
 export interface WodScoreInputValues {
   score_type: ScoreType
-  minutes: number
-  seconds: number
-  rounds: number
-  reps_extra: number
-  kg: number
-  weights: number[]
+  minutes: NumOrEmpty
+  seconds: NumOrEmpty
+  rounds: NumOrEmpty
+  reps_extra: NumOrEmpty
+  kg: NumOrEmpty
+  weights: NumOrEmpty[]
 }
 
 interface WodScoreInputsProps {
@@ -21,9 +23,10 @@ interface WodScoreInputsProps {
   prescription?: Prescription
 }
 
-function num(v: string): number {
+function parseNum(v: string): NumOrEmpty {
+  if (v === "") return ""
   const n = Number(v)
-  return Number.isFinite(n) && n >= 0 ? n : 0
+  return Number.isFinite(n) && n >= 0 ? n : ""
 }
 
 export function WodScoreInputs({ values, onChange, errors, prescription }: WodScoreInputsProps) {
@@ -42,7 +45,8 @@ export function WodScoreInputs({ values, onChange, errors, prescription }: WodSc
               min={0}
               max={120}
               value={values.minutes}
-              onChange={(e) => set("minutes", num(e.target.value))}
+              onChange={(e) => set("minutes", parseNum(e.target.value))}
+              placeholder="0"
             />
             {errors?.minutes && <p className="text-xs text-destructive">{errors.minutes}</p>}
           </div>
@@ -54,7 +58,8 @@ export function WodScoreInputs({ values, onChange, errors, prescription }: WodSc
               min={0}
               max={59}
               value={values.seconds}
-              onChange={(e) => set("seconds", num(e.target.value))}
+              onChange={(e) => set("seconds", parseNum(e.target.value))}
+              placeholder="0"
             />
             {errors?.seconds && <p className="text-xs text-destructive">{errors.seconds}</p>}
           </div>
@@ -71,7 +76,8 @@ export function WodScoreInputs({ values, onChange, errors, prescription }: WodSc
               min={0}
               max={999}
               value={values.rounds}
-              onChange={(e) => set("rounds", num(e.target.value))}
+              onChange={(e) => set("rounds", parseNum(e.target.value))}
+              placeholder="0"
             />
             {errors?.rounds && <p className="text-xs text-destructive">{errors.rounds}</p>}
           </div>
@@ -83,7 +89,8 @@ export function WodScoreInputs({ values, onChange, errors, prescription }: WodSc
               min={0}
               max={999}
               value={values.reps_extra}
-              onChange={(e) => set("reps_extra", num(e.target.value))}
+              onChange={(e) => set("reps_extra", parseNum(e.target.value))}
+              placeholder="0"
             />
             {errors?.reps_extra && <p className="text-xs text-destructive">{errors.reps_extra}</p>}
           </div>
@@ -100,7 +107,7 @@ export function WodScoreInputs({ values, onChange, errors, prescription }: WodSc
             min={0.5}
             max={500}
             value={values.kg}
-            onChange={(e) => set("kg", num(e.target.value))}
+            onChange={(e) => set("kg", parseNum(e.target.value))}
             placeholder="Ej: 100"
           />
           {errors?.kg && <p className="text-xs text-destructive">{errors.kg}</p>}
@@ -133,10 +140,10 @@ export function WodScoreInputs({ values, onChange, errors, prescription }: WodSc
                       step="0.5"
                       min={0.5}
                       max={500}
-                      value={values.weights[idx] ?? 0}
+                      value={values.weights[idx] ?? ""}
                       onChange={(e) => {
                         const next = values.weights.slice()
-                        next[idx] = num(e.target.value)
+                        next[idx] = parseNum(e.target.value)
                         set("weights", next)
                       }}
                       placeholder="kg"

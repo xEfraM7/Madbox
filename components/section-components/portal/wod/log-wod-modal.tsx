@@ -35,10 +35,15 @@ interface Props {
 
 const EMPTY_VALUES: WodScoreInputValues = {
   score_type: "for_time",
-  minutes: 0, seconds: 0,
-  rounds: 0, reps_extra: 0,
-  kg: 0,
+  minutes: "", seconds: "",
+  rounds: "", reps_extra: "",
+  kg: "",
   weights: [],
+}
+
+// Vacío → 0 (a nivel de payload server-side; la validación luego rechaza si es inválido)
+function toNum(v: number | ""): number {
+  return v === "" ? 0 : v
 }
 
 type ErrorKey = keyof WodScoreInputValues | `weight_${number}`
@@ -61,15 +66,15 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
       const t = existingLog.score_type
       setValues({
         score_type: t,
-        minutes: t === "for_time" ? Math.floor((existingLog.score_seconds ?? 0) / 60) : 0,
-        seconds: t === "for_time" ? (existingLog.score_seconds ?? 0) % 60 : 0,
-        rounds: t === "amrap" ? (existingLog.score_rounds ?? 0) : 0,
-        reps_extra: t === "amrap" ? (existingLog.score_reps ?? 0) : 0,
-        kg: t === "weight" ? Number(existingLog.score_kg ?? 0) : 0,
+        minutes: t === "for_time" ? Math.floor((existingLog.score_seconds ?? 0) / 60) : "",
+        seconds: t === "for_time" ? (existingLog.score_seconds ?? 0) % 60 : "",
+        rounds: t === "amrap" ? (existingLog.score_rounds ?? 0) : "",
+        reps_extra: t === "amrap" ? (existingLog.score_reps ?? 0) : "",
+        kg: t === "weight" ? Number(existingLog.score_kg ?? 0) : "",
         weights:
           t === "sets_reps_rm" && Array.isArray(existingLog.score_weights)
             ? existingLog.score_weights.slice()
-            : prescription?.map(() => 0) ?? [],
+            : prescription?.map(() => "" as const) ?? [],
       })
     } else {
       setRx(false)
@@ -77,7 +82,10 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
       setValues({
         ...EMPTY_VALUES,
         score_type: scoreType,
-        weights: scoreType === "sets_reps_rm" ? prescription?.map(() => 0) ?? [] : [],
+        weights:
+          scoreType === "sets_reps_rm"
+            ? prescription?.map(() => "" as const) ?? []
+            : [],
       })
     }
     setErrors({})
@@ -89,7 +97,9 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
       let payload: Parameters<typeof upsertWodLog>[0]
       switch (scoreType) {
         case "for_time": {
-          const total = values.minutes * 60 + values.seconds
+          const m = toNum(values.minutes)
+          const s = toNum(values.seconds)
+          const total = m * 60 + s
           if (total <= 0) errs.seconds = "Ingresa un tiempo válido"
           payload = {
             routine_id: routineId,
@@ -102,27 +112,30 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
           break
         }
         case "amrap": {
-          if (values.rounds < 0) errs.rounds = "Inválido"
-          if (values.reps_extra < 0) errs.reps_extra = "Inválido"
-          if (values.rounds + values.reps_extra === 0) errs.rounds = "Score vacío"
+          const r = toNum(values.rounds)
+          const re = toNum(values.reps_extra)
+          if (r < 0) errs.rounds = "Inválido"
+          if (re < 0) errs.reps_extra = "Inválido"
+          if (r + re === 0) errs.rounds = "Score vacío"
           payload = {
             routine_id: routineId,
             slot_id: slot.id,
             score_type: "amrap",
-            score_rounds: values.rounds,
-            score_reps: values.reps_extra,
+            score_rounds: r,
+            score_reps: re,
             rx,
             notes: notes || null,
           }
           break
         }
         case "weight": {
-          if (values.kg <= 0 || values.kg > 500) errs.kg = "Fuera de rango (0–500 kg)"
+          const kg = toNum(values.kg)
+          if (kg <= 0 || kg > 500) errs.kg = "Fuera de rango (0–500 kg)"
           payload = {
             routine_id: routineId,
             slot_id: slot.id,
             score_type: "weight",
-            score_kg: values.kg,
+            score_kg: kg,
             rx,
             notes: notes || null,
           }
@@ -132,9 +145,7 @@ export function LogWodModal({ open, onOpenChange, routineId, slot, existingLog }
           if (!prescription || prescription.length === 0) {
             throw new Error("El slot no tiene prescripción definida")
           }
-          const weights = prescription.map(
-            (_, i) => values.weights[i] ?? 0,
-          )
+          const weights = prescription.map((_, i) => toNum(values.weights[i] ?? ""))
           weights.forEach((w, i) => {
             if (w <= 0 || w > 500) {
               errs[`weight_${i}` as ErrorKey] = "Fuera de rango (0–500 kg)"

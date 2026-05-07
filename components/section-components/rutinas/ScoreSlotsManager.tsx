@@ -73,20 +73,24 @@ function PrescriptionEditor({
             type="number"
             min={1}
             max={20}
-            value={row.sets}
-            onChange={(e) =>
-              setRow(idx, { sets: Math.max(1, Number(e.target.value) || 1) })
-            }
+            value={row.sets === 0 ? "" : row.sets}
+            onChange={(e) => {
+              const v = e.target.value
+              setRow(idx, { sets: v === "" ? 0 : Number(v) })
+            }}
+            placeholder="0"
             className="h-8"
           />
           <Input
             type="number"
             min={1}
             max={99}
-            value={row.reps}
-            onChange={(e) =>
-              setRow(idx, { reps: Math.max(1, Number(e.target.value) || 1) })
-            }
+            value={row.reps === 0 ? "" : row.reps}
+            onChange={(e) => {
+              const v = e.target.value
+              setRow(idx, { reps: v === "" ? 0 : Number(v) })
+            }}
+            placeholder="0"
             className="h-8"
           />
           <Input
@@ -97,7 +101,7 @@ function PrescriptionEditor({
             value={row.percent ?? ""}
             onChange={(e) => {
               const v = e.target.value
-              setRow(idx, { percent: v ? Number(v) : undefined })
+              setRow(idx, { percent: v === "" ? undefined : Number(v) })
             }}
             className="h-8"
           />
