@@ -121,7 +121,8 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
       showToast.success("Cliente creado", message)
       onOpenChange(false)
     },
-    onError: () => showToast.error("Error", "No se pudo crear el cliente."),
+    onError: (error: Error) =>
+      showToast.error("Error", error.message || "No se pudo crear el cliente."),
   })
 
   const updateMutation = useMutation({
@@ -133,7 +134,8 @@ export function UserFormModal({ open, onOpenChange, user }: UserFormModalProps) 
       showToast.success("Cliente actualizado", `${variables.name} ha sido actualizado correctamente.`)
       onOpenChange(false)
     },
-    onError: () => showToast.error("Error", "No se pudo actualizar el cliente."),
+    onError: (error: Error) =>
+      showToast.error("Error", error.message || "No se pudo actualizar el cliente."),
   })
 
   useEffect(() => {

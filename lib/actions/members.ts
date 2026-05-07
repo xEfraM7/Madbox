@@ -64,7 +64,12 @@ export async function createMember(member: TablesInsert<"members">) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (error.code === "23505" && error.message.includes("members_email_key")) {
+      throw new Error("Ya existe un cliente registrado con ese correo electrónico.")
+    }
+    throw error
+  }
 
   const adminClient = createAdminClient()
   const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
@@ -128,7 +133,12 @@ export async function updateMember(id: string, member: TablesUpdate<"members">) 
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (error.code === "23505" && error.message.includes("members_email_key")) {
+      throw new Error("Ya existe otro cliente registrado con ese correo electrónico.")
+    }
+    throw error
+  }
 
   // Si cambió el email, sincronizar con auth.users para evitar que el miembro
   // pierda acceso al portal (su email actual debe existir en auth para iniciar sesión).
