@@ -67,8 +67,8 @@ export function DatosTab() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("La imagen no puede superar 10MB")
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error("La imagen no puede superar 30MB")
       return
     }
 

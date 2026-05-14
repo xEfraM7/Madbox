@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle } from "lucide-react"
@@ -71,11 +72,10 @@ export default function LoginMainComponent() {
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium">Contraseña</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="••••••••"
-                {...register("password", { 
+                {...register("password", {
                   required: "La contraseña es requerida",
                   minLength: { value: 6, message: "La contraseña debe tener al menos 6 caracteres" }
                 })}

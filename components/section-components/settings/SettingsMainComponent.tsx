@@ -8,6 +8,7 @@ import { showToast } from "@/lib/sweetalert"
 import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -207,21 +208,19 @@ export default function SettingsMainComponent() {
                 <form onSubmit={handleSubmitPassword(onSubmitPassword)} className="space-y-4 max-w-md">
                   <div className="grid gap-2">
                     <Label htmlFor="newPassword">Nueva contraseña</Label>
-                    <Input 
-                      id="newPassword" 
-                      type="password" 
+                    <PasswordInput
+                      id="newPassword"
                       placeholder="••••••••"
-                      {...registerPassword("newPassword", { required: true, minLength: 6 })} 
+                      {...registerPassword("newPassword", { required: true, minLength: 6 })}
                     />
                     <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-                    <Input 
-                      id="confirmPassword" 
-                      type="password" 
+                    <PasswordInput
+                      id="confirmPassword"
                       placeholder="••••••••"
-                      {...registerPassword("confirmPassword", { required: true })} 
+                      {...registerPassword("confirmPassword", { required: true })}
                     />
                   </div>
                   <Button type="submit" disabled={updatePasswordMutation.isPending}>

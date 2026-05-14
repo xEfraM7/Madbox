@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { KeyRound, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { updatePassword } from "@/lib/actions/auth"
@@ -61,9 +61,8 @@ export default function ChangePasswordMainComponent() {
           <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="password">Nueva contraseña</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="Mínimo 8 caracteres"
                 {...register("password")}
               />
@@ -73,9 +72,8 @@ export default function ChangePasswordMainComponent() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="confirm">Confirmar contraseña</Label>
-              <Input
+              <PasswordInput
                 id="confirm"
-                type="password"
                 placeholder="Repite la contraseña"
                 {...register("confirm")}
               />

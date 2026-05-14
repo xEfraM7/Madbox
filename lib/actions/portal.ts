@@ -163,7 +163,7 @@ export async function uploadAvatarToCloudinary(formData: FormData): Promise<stri
 
   const file = formData.get("avatar") as File
   if (!file || file.size === 0) throw new Error("No se seleccionó imagen")
-  if (file.size > 10 * 1024 * 1024) throw new Error("La imagen no puede superar 10MB")
+  if (file.size > 30 * 1024 * 1024) throw new Error("La imagen no puede superar 30MB")
 
   const allowedTypes = ["image/jpeg", "image/png", "image/webp"]
   if (!allowedTypes.includes(file.type)) {
