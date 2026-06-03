@@ -513,6 +513,38 @@ export type Database = {
         }
         Relationships: []
       }
+      renewal_notification_sends: {
+        Row: {
+          expiry_date: string
+          id: string
+          kind: string
+          member_id: string
+          sent_at: string
+        }
+        Insert: {
+          expiry_date: string
+          id?: string
+          kind: string
+          member_id: string
+          sent_at?: string
+        }
+        Update: {
+          expiry_date?: string
+          id?: string
+          kind?: string
+          member_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renewal_notification_sends_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       renewal_notifications_log: {
         Row: {
           created_at: string | null

@@ -5,7 +5,8 @@ import { DashboardLayout } from "@/components/shared/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Users, DollarSign, CreditCard, TrendingUp, Calendar, Activity, ArrowUpRight, ArrowDownRight, Wallet, Banknote, Bitcoin } from "lucide-react"
+import { Users, DollarSign, CreditCard, TrendingUp, Calendar, Activity, ArrowUpRight, ArrowDownRight, Wallet, Banknote, Bitcoin, ChevronDown } from "lucide-react"
+import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip, Cell } from "recharts"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useState, useEffect } from "react"
@@ -32,13 +33,13 @@ export default function DashboardMainComponent() {
   const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ["dashboard-stats", monthOffset],
     queryFn: () => getDashboardStats(monthOffset),
-    refetchInterval: 30000, // Refrescar cada 30 segundos
+    refetchInterval: 60000, // Refrescar cada 60 segundos
   })
 
   const { data: activities = [], isLoading: loadingActivities } = useQuery({
     queryKey: ["recent-activity"],
     queryFn: getRecentActivity,
-    refetchInterval: 10000, // Refrescar cada 10 segundos
+    refetchInterval: 60000, // Refrescar cada 60 segundos
   })
 
   const { data: upcomingPayments = [], isLoading: loadingPayments } = useQuery({
@@ -54,8 +55,11 @@ export default function DashboardMainComponent() {
   const { data: fundsData, isLoading: loadingFunds } = useQuery({
     queryKey: ["funds", monthOffset],
     queryFn: () => getFundsWithConversionByMonth(monthOffset),
-    refetchInterval: 30000, // Refrescar cada 30 segundos
+    refetchInterval: 60000, // Refrescar cada 60 segundos
   })
+
+  const rateLabel =
+    selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : selectedRate === "custom" ? "Custom" : "Efectivo"
 
   const formatCurrency = (amount: number) => {
     if (!isClient) return "$0"
@@ -117,136 +121,72 @@ export default function DashboardMainComponent() {
             <p className="text-muted-foreground mt-2">Aquí está el resumen de tu gimnasio hoy</p>
           </div>
 
-          {/* Month Selector */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMonthOffset(monthOffset - 1)}
-            >
-              ← Anterior
-            </Button>
-            <span className="text-sm font-medium min-w-[120px] text-center">
-              {new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMonthOffset(monthOffset + 1)}
-            >
-              Siguiente →
-            </Button>
+          {/* Controles: tasa global + selector de mes */}
+          <div className="flex flex-wrap items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  Tasa {rateLabel}
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedRate("custom")}>Tasa Personalizada</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMonthOffset(monthOffset - 1)}
+              >
+                ← Anterior
+              </Button>
+              <span className="text-sm font-medium min-w-[120px] text-center">
+                {new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMonthOffset(monthOffset + 1)}
+              >
+                Siguiente →
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Miembros Activos</CardTitle>
-              <Users className="h-5 w-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              {loadingStats ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <>
-                  <div className="text-3xl font-bold">{stats?.activeMembers || 0}</div>
-                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                    {(stats?.membersGrowth || 0) >= 0 ? (
-                      <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
-                    ) : (
-                      <ArrowDownRight className="h-3 w-3 text-red-500 mr-1" />
-                    )}
-                    <span className={(stats?.membersGrowth || 0) >= 0 ? "text-green-500" : "text-red-500"}>
-                      {stats?.membersGrowth || 0}%
-                    </span>
-                    <span className="ml-1">vs mes anterior</span>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+        {/* HÉROE: Total Consolidado en USD */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Wallet className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium">Total Consolidado en USD</span>
+                </div>
+                {loadingFunds ? (
+                  <Skeleton className="h-12 w-48 mt-3" />
+                ) : (
+                  <>
+                    <div className="text-4xl sm:text-5xl font-bold text-primary mt-2 tracking-tight wrap-break-word">
+                      ${formatNumber(calculateTotalInUsd(), 2)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Bs convertidos a tasa {rateLabel}: {getRateValue().toFixed(2)}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos del Mes</CardTitle>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-6 text-xs px-2">
-                    {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : selectedRate === "custom" ? "Custom" : "Efectivo"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedRate("custom")}>Tasa Personalizada</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </CardHeader>
-            <CardContent>
-              {loadingStats || loadingFunds ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <>
-                  <div className="text-2xl sm:text-3xl font-bold text-green-500 wrap-break-word">{formatCurrency(calculateMonthlyRevenueInUsd())}</div>
-                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                    {(stats?.revenueGrowth || 0) >= 0 ? (
-                      <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
-                    ) : (
-                      <ArrowDownRight className="h-3 w-3 text-red-500 mr-1" />
-                    )}
-                    <span className={(stats?.revenueGrowth || 0) >= 0 ? "text-green-500" : "text-red-500"}>
-                      {stats?.revenueGrowth || 0}%
-                    </span>
-                    <span className="ml-1">vs mes anterior</span>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Planes Activos</CardTitle>
-              <CreditCard className="h-5 w-5 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              {loadingStats ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <>
-                  <div className="text-3xl font-bold">{stats?.activePlans || 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {stats?.specialClasses || 0} clases especiales
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Tasa de Retención</CardTitle>
-              <TrendingUp className="h-5 w-5 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              {loadingStats ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <>
-                  <div className="text-3xl font-bold">{stats?.renewalRate || 0}%</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {stats?.activeMembers || 0} de {stats?.totalMembers || 0} miembros
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Fondos / Bolsos */}
+        {/* Fondos / Bolsos: desglose del total */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="border-blue-500/20 bg-blue-500/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -312,42 +252,100 @@ export default function DashboardMainComponent() {
           </Card>
         </div>
 
-        {/* Total en USD */}
-        <Card className="border-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Consolidado en USD</CardTitle>
-            <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs">
-                    Tasa {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : selectedRate === "custom" ? "Custom" : "Efectivo"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedRate("custom")}>Tasa Personalizada</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Wallet className="h-5 w-5 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loadingFunds ? (
-              <Skeleton className="h-10 w-32" />
-            ) : (
-              <>
-                <div className="text-4xl font-bold text-primary">
-                  ${formatNumber(calculateTotalInUsd(), 2)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Bs convertidos a tasa {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : "Efectivo"}: {getRateValue().toFixed(2)}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {/* Stats Cards */}
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Miembros Activos</CardTitle>
+              <Users className="h-5 w-5 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              {loadingStats ? (
+                <Skeleton className="h-8 w-20" />
+              ) : (
+                <>
+                  <div className="text-3xl font-bold">{stats?.activeMembers || 0}</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    {(stats?.membersGrowth || 0) >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3 text-red-500 mr-1" />
+                    )}
+                    <span className={(stats?.membersGrowth || 0) >= 0 ? "text-green-500" : "text-red-500"}>
+                      {stats?.membersGrowth || 0}%
+                    </span>
+                    <span className="ml-1">vs mes anterior</span>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos del Mes</CardTitle>
+              <DollarSign className="h-5 w-5 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              {loadingStats || loadingFunds ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <>
+                  <div className="text-2xl sm:text-3xl font-bold text-green-500 wrap-break-word">{formatCurrency(calculateMonthlyRevenueInUsd())}</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    {(stats?.revenueGrowth || 0) >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3 text-red-500 mr-1" />
+                    )}
+                    <span className={(stats?.revenueGrowth || 0) >= 0 ? "text-green-500" : "text-red-500"}>
+                      {stats?.revenueGrowth || 0}%
+                    </span>
+                    <span className="ml-1">vs mes anterior</span>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Planes Activos</CardTitle>
+              <CreditCard className="h-5 w-5 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              {loadingStats ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <>
+                  <div className="text-3xl font-bold">{stats?.activePlans || 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats?.specialClasses || 0} clases especiales
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tasa de Retención</CardTitle>
+              <TrendingUp className="h-5 w-5 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              {loadingStats ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <>
+                  <div className="text-3xl font-bold">{stats?.renewalRate || 0}%</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats?.activeMembers || 0} de {stats?.totalMembers || 0} miembros
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Revenue Chart & Activity */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -355,24 +353,9 @@ export default function DashboardMainComponent() {
           <Card className="col-span-full lg:col-span-4">
             <CardHeader className="pb-2">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div>
-                    <CardTitle className="text-base sm:text-lg">Ingresos Mensuales</CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">Últimos 6 meses en USD</CardDescription>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-6 text-xs px-2">
-                        {selectedRate === "bcv" ? "BCV" : selectedRate === "usdt" ? "USDT" : selectedRate === "custom" ? "Custom" : "Efectivo"}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuItem onClick={() => setSelectedRate("bcv")}>Tasa BCV</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSelectedRate("usdt")}>Tasa USDT</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSelectedRate("cash")}>Tasa Efectivo</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSelectedRate("custom")}>Tasa Personalizada</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <div>
+                  <CardTitle className="text-base sm:text-lg">Ingresos Mensuales</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Últimos 6 meses en USD</CardDescription>
                 </div>
                 {!loadingRevenueChart && revenueChart.length > 0 && (
                   <div className="text-left sm:text-right">
@@ -399,44 +382,42 @@ export default function DashboardMainComponent() {
                   <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
                 </div>
               ) : (
-                <div className="h-[140px] sm:h-[160px] flex items-end gap-1 sm:gap-2">
-                  {revenueChart.map((item, index) => {
-                    const maxRevenue = Math.max(...revenueChart.map((r) => r.revenue), 1)
-                    const heightPercent = Math.max((item.revenue / maxRevenue) * 100, 6)
-                    const barHeight = (heightPercent / 100) * 100
-                    const isCurrentMonth = index === revenueChart.length - 1
-                    const hasValue = item.revenue > 0
-
-                    return (
-                      <div key={index} className="flex-1 flex flex-col items-center justify-end group relative">
-                        {/* Tooltip on hover */}
-                        <div className="hidden sm:block absolute -top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-popover border rounded-md px-2 py-1 shadow-lg z-10 whitespace-nowrap">
-                          <p className="text-xs font-medium">${item.revenue.toLocaleString("es-ES", { minimumFractionDigits: 2 })}</p>
-                        </div>
-
-                        {/* Value label above bar */}
-                        {hasValue && (
-                          <span className="text-[8px] sm:text-[10px] font-medium text-muted-foreground mb-0.5">
-                            ${item.revenue >= 1000 ? Math.round(item.revenue / 1000) + "k" : Math.round(item.revenue)}
-                          </span>
-                        )}
-
-                        {/* Bar */}
-                        <div
-                          className={`w-full rounded-t transition-all cursor-pointer ${isCurrentMonth
-                              ? "bg-primary hover:bg-primary/90"
-                              : "bg-primary/60 hover:bg-primary/80"
-                            }`}
-                          style={{ height: `${barHeight}px`, minHeight: "8px" }}
-                        />
-
-                        {/* Month label */}
-                        <span className={`text-[9px] sm:text-xs mt-1 capitalize ${isCurrentMonth ? "font-semibold text-primary" : "text-muted-foreground"}`}>
-                          {item.month.substring(0, 3)}
-                        </span>
-                      </div>
-                    )
-                  })}
+                <div className="h-[140px] sm:h-[160px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={revenueChart} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+                      <XAxis
+                        dataKey="month"
+                        tickFormatter={(m: string) => m.substring(0, 3)}
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "var(--muted)", opacity: 0.3 }}
+                        contentStyle={{
+                          background: "var(--popover)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "8px",
+                          color: "var(--popover-foreground)",
+                          fontSize: "12px",
+                        }}
+                        labelClassName="capitalize"
+                        formatter={(value: number) => [
+                          `$${value.toLocaleString("es-ES", { minimumFractionDigits: 2 })}`,
+                          "Ingresos",
+                        ]}
+                      />
+                      <Bar dataKey="revenue" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                        {revenueChart.map((_, index) => (
+                          <Cell
+                            key={index}
+                            fill="var(--primary)"
+                            fillOpacity={index === revenueChart.length - 1 ? 1 : 0.55}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               )}
             </CardContent>

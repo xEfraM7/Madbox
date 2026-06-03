@@ -201,7 +201,6 @@ NEXT_PUBLIC_SITE_URL=
 3. Si tocaste mutaciones: verifica que se llama `revalidatePath` y `logActivity` cuando corresponde.
 4. Si tocaste permisos: revisaste tanto la guarda server-side como la condicional client-side.
 5. No dejaste `console.log` ni código muerto.
-6. No creaste archivos `*.md` nuevos a menos que el usuario lo pidiera.
 
 ---
 

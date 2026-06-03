@@ -12,6 +12,7 @@ import {
   getMyWodLogsForRoutine,
 } from "@/lib/actions/wod-logs"
 import { WodSlotCard } from "./WodSlotCard"
+import { EntrenarTabs } from "../EntrenarTabs"
 import { createClient } from "@/utils/supabase/client"
 
 export default function PortalWodMainComponent() {
@@ -71,9 +72,12 @@ export default function PortalWodMainComponent() {
 
   if (!me) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center space-y-3">
-        <p className="text-sm font-medium">No tienes un perfil de miembro asignado.</p>
-        <p className="text-xs text-muted-foreground">Contacta al admin del gimnasio.</p>
+      <div className="space-y-4">
+        <EntrenarTabs />
+        <div className="rounded-xl border border-dashed p-10 text-center space-y-3">
+          <p className="text-sm font-medium">No tienes un perfil de miembro asignado.</p>
+          <p className="text-xs text-muted-foreground">Contacta al admin del gimnasio.</p>
+        </div>
       </div>
     )
   }
@@ -81,6 +85,7 @@ export default function PortalWodMainComponent() {
   if (!routine) {
     return (
       <div className="space-y-4">
+        <EntrenarTabs />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">WOD del día</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -100,6 +105,7 @@ export default function PortalWodMainComponent() {
   if (!routine.content?.trim() && routine.score_slots.length === 0) {
     return (
       <div className="space-y-4">
+        <EntrenarTabs />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">WOD del día</h1>
         </div>
@@ -118,6 +124,7 @@ export default function PortalWodMainComponent() {
 
   return (
     <div className="space-y-4">
+      <EntrenarTabs />
       <div>
         <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
           {dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}

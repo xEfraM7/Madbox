@@ -6,6 +6,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths, format } from "date-fns
 import { getMemberRoutineDatesInRange, getRoutineForMemberOnDate } from "@/lib/actions/routines"
 import { RutinaCalendar } from "./RutinaCalendar"
 import { RutinaViewer } from "./RutinaViewer"
+import { EntrenarTabs } from "../EntrenarTabs"
 
 function todayCaracasISO(): string {
   const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -39,6 +40,8 @@ export default function PortalRutinasMainComponent() {
 
   return (
     <div className="space-y-4">
+      <EntrenarTabs />
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Mis rutinas</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -46,7 +49,7 @@ export default function PortalRutinasMainComponent() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[360px_1fr]">
+      <div className="grid gap-4 md:grid-cols-[minmax(300px,360px)_1fr]">
         <RutinaCalendar
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}

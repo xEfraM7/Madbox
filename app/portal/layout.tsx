@@ -2,24 +2,24 @@
 
 import type React from "react"
 import { useState } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { Home, Calendar, CreditCard, User, LogOut, Menu, X, Compass, Flame, CalendarDays } from "lucide-react"
+import { Home, Calendar, User, LogOut, Menu, X, Compass, Dumbbell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { signOut } from "@/lib/actions/auth"
 import { getMyProfile } from "@/lib/actions/portal"
 
+// Una entrada puede agrupar varias rutas: `match` decide el estado activo.
 const nav = [
-  { name: "Inicio", href: "/portal", icon: Home },
-  { name: "Rutinas", href: "/portal/rutinas", icon: CalendarDays },
-  { name: "Descubrir", href: "/portal/descubrir", icon: Compass },
-  { name: "WOD", href: "/portal/wod", icon: Flame },
-  { name: "Clases", href: "/portal/clases", icon: Calendar },
-  { name: "Pagos", href: "/portal/pagos", icon: CreditCard },
-  { name: "Perfil", href: "/portal/perfil", icon: User },
+  { name: "Inicio", href: "/portal", icon: Home, match: (p: string) => p === "/portal" },
+  { name: "Entrenar", href: "/portal/rutinas", icon: Dumbbell, match: (p: string) => p.startsWith("/portal/rutinas") || p.startsWith("/portal/wod") },
+  { name: "Comunidad", href: "/portal/descubrir", icon: Compass, match: (p: string) => p.startsWith("/portal/descubrir") },
+  { name: "Clases", href: "/portal/clases", icon: Calendar, match: (p: string) => p.startsWith("/portal/clases") },
+  { name: "Perfil", href: "/portal/perfil", icon: User, match: (p: string) => p.startsWith("/portal/perfil") || p.startsWith("/portal/pagos") },
 ]
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -48,13 +48,22 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
         <div className="flex h-14 items-center justify-between px-4">
-          <span className="font-bold text-primary text-xl tracking-tight">Madbox</span>
+          <Link href="/portal" aria-label="Ir al inicio" className="flex items-center shrink-0">
+            <Image
+              src="/Madbox_logo.jpeg"
+              alt="Madbox"
+              width={40}
+              height={40}
+              priority
+              className="h-10 w-10 rounded-md object-contain"
+            />
+          </Link>
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">
             {nav.map((item) => {
               const Icon = item.icon
-              const active = pathname === item.href
+              const active = item.match(pathname)
               return (
                 <Link key={item.href} href={item.href}>
                   <Button
@@ -108,7 +117,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           <div className="md:hidden border-t border-border bg-background px-4 py-2 flex flex-col gap-1">
             {nav.map((item) => {
               const Icon = item.icon
-              const active = pathname === item.href
+              const active = item.match(pathname)
               return (
                 <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
                   <Button
@@ -142,7 +151,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         <div className="flex">
           {nav.map((item) => {
             const Icon = item.icon
-            const active = pathname === item.href
+            const active = item.match(pathname)
             return (
               <Link key={item.href} href={item.href} className="flex-1">
                 <div className={cn(

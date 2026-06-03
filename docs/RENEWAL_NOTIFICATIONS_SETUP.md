@@ -25,13 +25,18 @@ El envío se hace con **Resend** desde el dominio configurado.
 ```
 `0 12 * * *` = **12:00 UTC** todos los días (≈ 8:00 AM hora Venezuela, UTC-4). Ajusta el horario si lo necesitas. Vercel Cron solo soporta granularidad por hora en planes gratuitos.
 
-### 3. Tabla de Registro: `renewal_notifications_log`
-- Registra cada ejecución de la función
-- Almacena cantidad de correos enviados, errores, etc.
+### 3. Tablas de registro
+- `renewal_notifications_log`: registra cada **ejecución** del cron (correos enviados, total de miembros, errores, estado).
+- `renewal_notification_sends`: registra cada **aviso individual** enviado, con `UNIQUE (member_id, expiry_date, kind)` donde `kind` es `reminder` (3 días antes) o `urgent` (el mismo día). Es lo que permite consultar por rango sin reenviar el mismo aviso a diario.
 
 ### 4. Funciones TypeScript
 - `lib/actions/email.ts`: `sendWelcomeEmail()` y `sendRenewalNotification()` (Resend)
 - `lib/actions/renewal-notifications.ts`: `sendRenewalNotifications()` (lógica de negocio que recorre miembros y dispara los correos)
+
+**Robustez del envío:**
+- Usa el **cliente admin** (`service_role`): el cron corre sin sesión de usuario, así que el cliente SSR basado en cookies sería bloqueado por RLS. Requiere `SUPABASE_SERVICE_ROLE_KEY`.
+- Consulta por **rango** (hoy..hoy+3), no por días exactos: si el cron se salta un día, el aviso igual sale al día siguiente.
+- **Deduplica** con `renewal_notification_sends`: cada miembro recibe a lo sumo un `reminder` y un `urgent` por fecha de vencimiento.
 
 ## Variables de entorno
 
@@ -42,6 +47,7 @@ RESEND_API_KEY=re_xxxxxxxxxx
 RESEND_FROM_EMAIL=Madbox <no-reply@tudominio.com>
 CRON_SECRET=<una-cadena-aleatoria-larga>
 NEXT_PUBLIC_SITE_URL=https://tudominio.com
+SUPABASE_SERVICE_ROLE_KEY=<service_role de Supabase>  # requerido: el cron lee/escribe con bypass de RLS
 ```
 
 - `RESEND_FROM_EMAIL` puede ser solo el correo (`no-reply@tudominio.com`) — en ese caso el código antepone el nombre del gimnasio automáticamente — o ya venir con formato `"Nombre <correo@dominio>"`.

@@ -7,6 +7,7 @@ import { getMyProfile } from "@/lib/actions/portal"
 import { DatosTab } from "./DatosTab"
 import { MarcasTab } from "./MarcasTab"
 import { PrivacidadTab } from "./PrivacidadTab"
+import PortalPagosMainComponent from "../pagos/PortalPagosMainComponent"
 
 export default function PortalPerfilMainComponent() {
   const { isLoading } = useQuery({
@@ -36,10 +37,12 @@ export default function PortalPerfilMainComponent() {
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="datos" className="flex-1 sm:flex-none">Datos</TabsTrigger>
           <TabsTrigger value="marcas" className="flex-1 sm:flex-none">Marcas</TabsTrigger>
+          <TabsTrigger value="pagos" className="flex-1 sm:flex-none">Pagos</TabsTrigger>
           <TabsTrigger value="privacidad" className="flex-1 sm:flex-none">Privacidad</TabsTrigger>
         </TabsList>
         <TabsContent value="datos"><DatosTab /></TabsContent>
         <TabsContent value="marcas"><MarcasTab /></TabsContent>
+        <TabsContent value="pagos"><PortalPagosMainComponent /></TabsContent>
         <TabsContent value="privacidad"><PrivacidadTab /></TabsContent>
       </Tabs>
     </div>

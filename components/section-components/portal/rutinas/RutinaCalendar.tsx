@@ -20,7 +20,7 @@ export function RutinaCalendar({ selectedDate, onSelectDate, routineDates, onMon
   )
 
   return (
-    <div className="rounded-xl border bg-card p-3">
+    <div className="rounded-xl border bg-card overflow-hidden">
       <Calendar
         mode="single"
         locale={es}
@@ -30,9 +30,13 @@ export function RutinaCalendar({ selectedDate, onSelectDate, routineDates, onMon
           onSelectDate(format(d, "yyyy-MM-dd"))
         }}
         onMonthChange={onMonthChange}
+        showOutsideDays
+        className="w-full bg-transparent p-3 sm:p-4 [--cell-size:2.5rem] sm:[--cell-size:2.75rem]"
+        classNames={{ root: "w-full" }}
         modifiers={{ hasRoutine: markers }}
         modifiersClassNames={{
-          hasRoutine: "relative after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary",
+          hasRoutine:
+            "relative after:content-[''] after:absolute after:bottom-1.5 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary data-[selected=true]:after:bg-primary-foreground",
         }}
       />
     </div>
