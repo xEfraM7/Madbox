@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { getMyProfile } from "@/lib/actions/portal"
 import { TodayRoutineCard } from "./TodayRoutineCard"
 import { CompletarPerfilBanner } from "./CompletarPerfilBanner"
+import { TiendaPromoCard } from "./TiendaPromoCard"
 
 const statusConfig = {
   active:  { label: "Activo",    color: "bg-green-900/50 text-green-400 border-green-700", accent: "border-green-800" },
@@ -75,6 +76,9 @@ export default function PortalHomeMainComponent() {
 
       {/* HÉROE: Rutina del día */}
       <TodayRoutineCard />
+
+      {/* Acceso a la Tienda — tira poco invasiva con acento dorado */}
+      <TiendaPromoCard />
 
       {/* Membresía — tira compacta (acento solo si no está activa) */}
       <Card className={cn("border", !isActive && cfg.accent)}>
