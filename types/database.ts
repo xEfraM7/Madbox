@@ -154,6 +154,7 @@ export type Database = {
           phone: string | null
           tax_rate: number | null
           updated_at: string | null
+          whatsapp: string | null
         }
         Insert: {
           address?: string | null
@@ -167,6 +168,7 @@ export type Database = {
           phone?: string | null
           tax_rate?: number | null
           updated_at?: string | null
+          whatsapp?: string | null
         }
         Update: {
           address?: string | null
@@ -180,6 +182,7 @@ export type Database = {
           phone?: string | null
           tax_rate?: number | null
           updated_at?: string | null
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -512,6 +515,86 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      product_categories: {
+        Row: {
+          active: boolean
+          created_at: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          active: boolean
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          featured: boolean
+          id: string
+          images: string[]
+          in_stock: boolean
+          name: string
+          price: number
+          sort_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          featured?: boolean
+          id?: string
+          images?: string[]
+          in_stock?: boolean
+          name: string
+          price?: number
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          featured?: boolean
+          id?: string
+          images?: string[]
+          in_stock?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       renewal_notification_sends: {
         Row: {

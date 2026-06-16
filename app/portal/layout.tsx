@@ -6,7 +6,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { Home, Calendar, User, LogOut, Menu, X, Compass, Dumbbell } from "lucide-react"
+import { Home, Calendar, User, LogOut, Menu, X, Compass, Dumbbell, ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -18,6 +18,7 @@ const nav = [
   { name: "Inicio", href: "/portal", icon: Home, match: (p: string) => p === "/portal" },
   { name: "Entrenar", href: "/portal/rutinas", icon: Dumbbell, match: (p: string) => p.startsWith("/portal/rutinas") || p.startsWith("/portal/wod") },
   { name: "Comunidad", href: "/portal/descubrir", icon: Compass, match: (p: string) => p.startsWith("/portal/descubrir") },
+  { name: "Tienda", href: "/portal/tienda", icon: ShoppingBag, match: (p: string) => p.startsWith("/portal/tienda") },
   { name: "Clases", href: "/portal/clases", icon: Calendar, match: (p: string) => p.startsWith("/portal/clases") },
   { name: "Perfil", href: "/portal/perfil", icon: User, match: (p: string) => p.startsWith("/portal/perfil") || p.startsWith("/portal/pagos") },
 ]

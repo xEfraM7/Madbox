@@ -103,6 +103,16 @@ export const permissionGroups = [
       { id: "dashboard.reports", label: "Ver reportes", description: "Acceso a estadísticas y reportes" },
     ]
   },
+  {
+    id: "products",
+    label: "Tienda",
+    permissions: [
+      { id: "products.view", label: "Ver tienda", description: "Ver productos y categorías" },
+      { id: "products.create", label: "Crear productos", description: "Crear productos y categorías" },
+      { id: "products.edit", label: "Editar productos", description: "Modificar productos y categorías" },
+      { id: "products.delete", label: "Eliminar productos", description: "Eliminar productos y categorías" },
+    ]
+  },
 ]
 
 // Flat list for backward compatibility

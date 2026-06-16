@@ -10,7 +10,7 @@ import { usePermissions } from "@/lib/hooks/use-permissions"
 import { ExchangeRateModal } from "./exchange-rate-modal"
 import { ExchangeRateUpdater } from "./exchange-rate-updater"
 
-import { Home, Users, Shield, CreditCard, DollarSign, Calendar, CalendarCheck, CalendarClock, Settings, LogOut, Menu, X, ChevronDown } from "lucide-react"
+import { Home, Users, Shield, CreditCard, DollarSign, Calendar, CalendarCheck, CalendarClock, ShoppingBag, Settings, LogOut, Menu, X, ChevronDown } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -26,6 +26,7 @@ const navigation = [
   { name: "Planes", href: "/dashboard/plans", icon: CreditCard, permissions: ["plans.view"] },
   { name: "Pagos", href: "/dashboard/payments", icon: DollarSign, permissions: ["payments.view"] },
   { name: "Clases Especiales", href: "/dashboard/classes", icon: Calendar, permissions: ["classes.view"] },
+  { name: "Tienda", href: "/dashboard/tienda", icon: ShoppingBag, permissions: ["products.view"] },
   { name: "Cierres", href: "/dashboard/closings", icon: CalendarCheck, permissions: ["closings.view"] },
   { name: "Rutinas", href: "/dashboard/rutinas", icon: CalendarClock, permissions: ["routines.view"] },
   { name: "Configuración", href: "/dashboard/settings", icon: Settings, permissions: ["settings.view"] },

@@ -1,0 +1,1 @@
+export { TiendaMainComponent } from "./TiendaMainComponent"

@@ -18,6 +18,8 @@ export type ActivityAction =
   | "schedule_updated"
   | "pr_updated" | "pr_deleted"
   | "wod_logged" | "wod_deleted"
+  | "product_created" | "product_updated" | "product_deleted"
+  | "product_category_created" | "product_category_updated" | "product_category_deleted"
 
 export type EntityType =
   | "payment" | "member" | "plan" | "special_class"
@@ -26,6 +28,7 @@ export type EntityType =
   | "routine_schedule"
   | "personal_record"
   | "wod_log"
+  | "product" | "product_category"
 
 interface LogActivityParams {
   action: ActivityAction

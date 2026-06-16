@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "30mb",
     },
   },
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
+  },
   async redirects() {
     return [
       {

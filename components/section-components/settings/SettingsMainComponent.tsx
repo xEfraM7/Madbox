@@ -21,6 +21,7 @@ interface GymInfoForm {
   name: string
   email: string
   phone: string
+  whatsapp: string
   address: string
 }
 
@@ -69,7 +70,7 @@ export default function SettingsMainComponent() {
   })
 
   const { register, handleSubmit, reset } = useForm<GymInfoForm>({
-    defaultValues: { name: "", email: "", phone: "", address: "" }
+    defaultValues: { name: "", email: "", phone: "", whatsapp: "", address: "" }
   })
 
   const { register: registerPassword, handleSubmit: handleSubmitPassword, reset: resetPassword, formState: { errors: passwordErrors } } = useForm<PasswordForm>({
@@ -82,6 +83,7 @@ export default function SettingsMainComponent() {
         name: settings.name || "",
         email: settings.email || "",
         phone: settings.phone || "",
+        whatsapp: settings.whatsapp || "",
         address: settings.address || ""
       })
     }
@@ -175,6 +177,11 @@ export default function SettingsMainComponent() {
                     <div className="grid gap-2">
                       <Label htmlFor="phone">Teléfono</Label>
                       <Input id="phone" {...register("phone")} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="whatsapp">WhatsApp (tienda)</Label>
+                      <Input id="whatsapp" placeholder="+58412XXXXXXX" {...register("whatsapp")} />
+                      <p className="text-xs text-muted-foreground">Número usado en el botón &quot;Pedir por WhatsApp&quot; de la tienda. Formato internacional.</p>
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="address">Dirección</Label>
