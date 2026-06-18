@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { showToast } from "@/lib/sweetalert"
@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react"
 import { createPayment, updatePayment } from "@/lib/actions/payments"
 import { getMembers } from "@/lib/actions/members"
 import { getPlans } from "@/lib/actions/plans"
+import { getExchangeRates } from "@/lib/actions/funds"
 import { toUsd, BS_PAYMENT_METHODS } from "@/lib/utils"
 
 interface PaymentFormModalProps {
@@ -67,6 +68,7 @@ function calculateDueDate(paymentDate: string, memberPaymentDate?: string): stri
 export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormModalProps) {
   const queryClient = useQueryClient()
   const initialized = useRef(false)
+  const [rateType, setRateType] = useState<"bcv" | "usdt">("bcv")
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: { member_id: "", plan_id: "", amount: "", method: "Efectivo", reference: "", payment_date: "", due_date: "", payment_rate: "" }
@@ -90,6 +92,16 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     enabled: open,
   })
 
+  const { data: exchangeRates = [] } = useQuery({
+    queryKey: ["exchange-rates"],
+    queryFn: getExchangeRates,
+    enabled: open,
+  })
+
+  const bcvRate = Number(exchangeRates.find((r: any) => r.type === "BCV")?.rate ?? 0)
+  const usdtRate = Number(exchangeRates.find((r: any) => r.type === "USDT")?.rate ?? 0)
+  const activeRate = rateType === "bcv" ? bcvRate : usdtRate
+
   const selectedMember = members.find((m: any) => m.id === member_id)
   const selectedPlan = plans.find((p: any) => p.id === plan_id)
 
@@ -104,6 +116,15 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   const isOverpay = abonoUsd > remainingUsd + 0.01
 
   const isEditing = payment?.id
+
+  // Sincronizar payment_rate con la tasa activa del sistema cuando cambia el método o la tasa
+  useEffect(() => {
+    if (BS_PAYMENT_METHODS.includes(method) && activeRate > 0) {
+      setValue("payment_rate", activeRate.toFixed(2))
+    } else if (!BS_PAYMENT_METHODS.includes(method)) {
+      setValue("payment_rate", "")
+    }
+  }, [method, activeRate, setValue])
 
   // Inicializar formulario cuando se abre el modal
   useEffect(() => {
@@ -151,6 +172,15 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     }
   }, [open, members.length, plans.length, payment, isEditing, reset])
 
+  const handleRateTypeChange = (newType: "bcv" | "usdt") => {
+    const newRate = newType === "bcv" ? bcvRate : usdtRate
+    setRateType(newType)
+    setValue("payment_rate", newRate.toFixed(2))
+    if (!isEditing && remainingUsd > 0 && newRate > 0) {
+      setValue("amount", (remainingUsd * newRate).toFixed(2))
+    }
+  }
+
   // Auto-fill cuando el usuario selecciona un miembro manualmente
   const handleMemberChange = (value: string) => {
     setValue("member_id", value)
@@ -162,10 +192,12 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
       const memberPlan = plans.find((p: any) => p.id === member?.plan_id)
       const pendingUsd = Number(member?.balance_due ?? 0)
       const baseUsd = pendingUsd > 0 ? pendingUsd : Number(memberPlan?.price ?? 0)
-      // Para métodos en USD autollenamos directo; para Bs dejamos que el admin ingrese
-      // monto+tasa (el monto va en Bs y no podemos convertir sin tasa).
-      if (!BS_PAYMENT_METHODS.includes(method) && baseUsd > 0) {
-        setValue("amount", baseUsd.toFixed(2))
+      if (baseUsd > 0) {
+        if (BS_PAYMENT_METHODS.includes(method) && activeRate > 0) {
+          setValue("amount", (baseUsd * activeRate).toFixed(2))
+        } else if (!BS_PAYMENT_METHODS.includes(method)) {
+          setValue("amount", baseUsd.toFixed(2))
+        }
       } else {
         setValue("amount", "")
       }
@@ -176,9 +208,12 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   const handlePlanChange = (value: string) => {
     setValue("plan_id", value)
     if (!isEditing) {
-      const selectedPlan = plans.find((p: any) => p.id === value)
-      if (selectedPlan) {
-        setValue("amount", selectedPlan.price.toString())
+      const plan = plans.find((p: any) => p.id === value)
+      if (!plan) return
+      if (BS_PAYMENT_METHODS.includes(method) && activeRate > 0) {
+        setValue("amount", (Number(plan.price) * activeRate).toFixed(2))
+      } else {
+        setValue("amount", plan.price.toString())
       }
     }
   }
@@ -216,9 +251,9 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     const amountNum = parseFloat(data.amount)
     const rateNum = data.payment_rate ? parseFloat(data.payment_rate) : null
 
-    // Abono en Bs requiere tasa para poder convertir el saldo a USD.
+    // La tasa viene automática del sistema; solo fallaría si las tasas no cargaron.
     if (BS_PAYMENT_METHODS.includes(data.method) && (!rateNum || rateNum <= 0)) {
-      showToast.error("Falta la tasa", "Ingresa la tasa Bs/USD para registrar un abono en bolívares.")
+      showToast.error("Tasa no disponible", "No se pudo obtener la tasa de cambio. Intenta de nuevo en un momento.")
       return
     }
 
@@ -348,17 +383,32 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
               </div>
             )}
 
-            {METHODS_IN_BS.includes(method) && (
+            {BS_PAYMENT_METHODS.includes(method) && (
               <div className="grid gap-2">
-                <Label htmlFor="payment_rate">Tasa del pago (opcional)</Label>
-                <Input
-                  id="payment_rate"
-                  type="number"
-                  step="0.01"
-                  {...register("payment_rate")}
-                  placeholder="Ej: 45.50"
-                />
-                <p className="text-xs text-muted-foreground">Tasa Bs/USD al momento del pago</p>
+                <Label>Tasa de conversión</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={rateType === "bcv" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => handleRateTypeChange("bcv")}
+                  >
+                    BCV {bcvRate > 0 ? `Bs. ${bcvRate.toFixed(2)}` : "—"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={rateType === "usdt" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => handleRateTypeChange("usdt")}
+                  >
+                    USDT {usdtRate > 0 ? `Bs. ${usdtRate.toFixed(2)}` : "—"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Tasa aplicada: {activeRate > 0 ? `${activeRate.toFixed(2)} Bs/USD` : "Sin tasa disponible"}
+                </p>
               </div>
             )}
 
