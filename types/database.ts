@@ -192,6 +192,7 @@ export type Database = {
           athlete_since: string | null
           auth_user_id: string | null
           avatar_url: string | null
+          balance_due: number
           birth_date: string | null
           created_at: string | null
           discoverable: boolean
@@ -221,6 +222,7 @@ export type Database = {
           athlete_since?: string | null
           auth_user_id?: string | null
           avatar_url?: string | null
+          balance_due?: number
           birth_date?: string | null
           created_at?: string | null
           discoverable?: boolean
@@ -250,6 +252,7 @@ export type Database = {
           athlete_since?: string | null
           auth_user_id?: string | null
           avatar_url?: string | null
+          balance_due?: number
           birth_date?: string | null
           created_at?: string | null
           discoverable?: boolean
@@ -391,6 +394,7 @@ export type Database = {
           created_at: string | null
           due_date: string
           id: string
+          is_installment: boolean
           member_id: string | null
           method: string | null
           payment_date: string | null
@@ -405,6 +409,7 @@ export type Database = {
           created_at?: string | null
           due_date: string
           id?: string
+          is_installment?: boolean
           member_id?: string | null
           method?: string | null
           payment_date?: string | null
@@ -419,6 +424,7 @@ export type Database = {
           created_at?: string | null
           due_date?: string
           id?: string
+          is_installment?: boolean
           member_id?: string | null
           method?: string | null
           payment_date?: string | null
