@@ -110,6 +110,12 @@ export default function PaymentsMainComponent() {
   })
 
   const expiredMembers = members.filter((m: any) => m.status === "expired")
+  const debtors = members.filter((m: any) => Number(m.balance_due) > 0)
+
+  const filteredDebtors = debtors.filter((member: any) =>
+    member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.email?.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   // Filtrar pagos del mes actual
   const currentMonthPayments = payments.filter((payment: any) => {
@@ -160,7 +166,7 @@ export default function PaymentsMainComponent() {
           </Button>
         </div>
 
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos Totales</CardTitle>
@@ -218,6 +224,15 @@ export default function PaymentsMainComponent() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">{expiredMembers.length}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-yellow-500/20 bg-yellow-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Deudores</CardTitle>
+              <AlertCircle className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-500">{debtors.length}</div>
             </CardContent>
           </Card>
         </div>
@@ -278,6 +293,50 @@ export default function PaymentsMainComponent() {
           </Card>
         )}
 
+        {filteredDebtors.length > 0 && (
+          <Card className="border-yellow-500/40">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-500" />
+                <div>
+                  <CardTitle className="text-lg">Clientes con saldo pendiente ({filteredDebtors.length})</CardTitle>
+                  <CardDescription>Estos clientes están abonando su mensualidad por partes</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead className="hidden sm:table-cell">Plan</TableHead>
+                      <TableHead>Saldo</TableHead>
+                      <TableHead className="text-right">Acción</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDebtors.map((member: any) => (
+                      <TableRow key={member.id}>
+                        <TableCell>
+                          <p className="font-medium">{member.name}</p>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell"><Badge variant="outline">{member.plans?.name || "Sin plan"}</Badge></TableCell>
+                        <TableCell className="font-medium text-yellow-500">${Number(member.balance_due).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" onClick={() => { setSelectedPayment({ member_id: member.id, plan_id: member.plan_id }); setIsModalOpen(true) }}>
+                            <Plus className="mr-2 h-4 w-4 hidden sm:inline" /><span className="hidden sm:inline">Registrar abono</span><span className="sm:hidden">Abonar</span>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Historial de Pagos ({filteredPayments.length})</CardTitle>
@@ -311,7 +370,10 @@ export default function PaymentsMainComponent() {
                         <TableRow key={payment.id} className="cursor-pointer" onClick={() => { setDetailPayment(payment); setDetailModalOpen(true) }}>
                           <TableCell>
                             <div>
-                              <p className="font-medium">{payment.members?.name || "Sin cliente"}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{payment.members?.name || "Sin cliente"}</p>
+                                {payment.is_installment && <Badge variant="outline" className="border-yellow-500/40 text-yellow-500">Abono</Badge>}
+                              </div>
                               <p className="text-xs text-muted-foreground sm:hidden">{payment.method}</p>
                             </div>
                           </TableCell>
