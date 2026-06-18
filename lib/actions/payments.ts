@@ -18,7 +18,10 @@ export async function getPayments() {
   return data
 }
 
-export async function createPayment(payment: TablesInsert<"payments">) {
+export async function createPayment(
+  payment: TablesInsert<"payments">,
+  options?: { enforceFullPayment?: boolean },
+) {
   const supabase = await createClient()
 
   // --- Calcular saldo del periodo (lógica de abonos) ---
@@ -59,6 +62,10 @@ export async function createPayment(payment: TablesInsert<"payments">) {
       isInstallment = false
     } else {
       const abonoUsd = toUsd(Number(payment.amount), payment.method, payment.payment_rate)
+      // Guarda de "pago completo": el monto debe cubrir el total restante del periodo.
+      if (options?.enforceFullPayment && abonoUsd < remaining - 0.01) {
+        throw new Error("El pago completo no cubre el total del periodo.")
+      }
       const appliedUsd = Math.min(abonoUsd, remaining)
       newBalance = Math.max(0, remaining - appliedUsd)
       isInstallment = opensPeriod ? newBalance > 0 : true

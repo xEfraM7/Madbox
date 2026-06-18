@@ -17,6 +17,7 @@ import { PaymentDetailModal } from "@/components/shared/payment-detail-modal"
 import { getPayments, deletePayment } from "@/lib/actions/payments"
 import { getMembers } from "@/lib/actions/members"
 import { getPaymentsFundsSummaryByMonth, getExchangeRates } from "@/lib/actions/funds"
+import { formatBs } from "@/lib/utils"
 
 
 
@@ -63,6 +64,7 @@ export default function PaymentsMainComponent() {
   const bcvRate = exchangeRates.find((r: any) => r.type === "BCV")?.rate || 1
   const usdtRate = exchangeRates.find((r: any) => r.type === "USDT")?.rate || 1
   const customRate = exchangeRates.find((r: any) => r.type === "CUSTOM")?.rate || 1
+  const bcvRateForBs = Number(exchangeRates.find((r: any) => r.type === "BCV")?.rate ?? 0)
 
   const getRateValue = () => {
     switch (selectedRate) {
@@ -322,7 +324,14 @@ export default function PaymentsMainComponent() {
                           <p className="font-medium">{member.name}</p>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell"><Badge variant="outline">{member.plans?.name || "Sin plan"}</Badge></TableCell>
-                        <TableCell className="font-medium text-yellow-500">${Number(member.balance_due).toFixed(2)}</TableCell>
+                        <TableCell className="font-medium text-yellow-500">
+                          ${Number(member.balance_due).toFixed(2)}
+                          {bcvRateForBs > 0 && (
+                            <span className="block text-xs font-normal text-muted-foreground">
+                              ≈ {formatBs(Number(member.balance_due) * bcvRateForBs)} (BCV)
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button size="sm" onClick={() => { setSelectedPayment({ member_id: member.id, plan_id: member.plan_id }); setIsModalOpen(true) }}>
                             <Plus className="mr-2 h-4 w-4 hidden sm:inline" /><span className="hidden sm:inline">Registrar abono</span><span className="sm:hidden">Abonar</span>

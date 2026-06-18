@@ -16,7 +16,7 @@ import { createPayment, updatePayment } from "@/lib/actions/payments"
 import { getMembers } from "@/lib/actions/members"
 import { getPlans } from "@/lib/actions/plans"
 import { getExchangeRates } from "@/lib/actions/funds"
-import { toUsd, BS_PAYMENT_METHODS } from "@/lib/utils"
+import { toUsd, BS_PAYMENT_METHODS, formatBs } from "@/lib/utils"
 
 interface PaymentFormModalProps {
   open: boolean
@@ -69,6 +69,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   const queryClient = useQueryClient()
   const initialized = useRef(false)
   const [rateType, setRateType] = useState<"bcv" | "usdt">("bcv")
+  const [paymentType, setPaymentType] = useState<"full" | "installment">("full")
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: { member_id: "", plan_id: "", amount: "", method: "Efectivo", reference: "", payment_date: "", due_date: "", payment_rate: "" }
@@ -126,6 +127,17 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     }
   }, [method, activeRate, setValue])
 
+  // En "Pago completo" el monto se bloquea al total restante (en la moneda del método).
+  useEffect(() => {
+    if (isEditing || paymentType !== "full" || method === "Solvencia sin ingreso") return
+    if (remainingUsd <= 0) return
+    if (BS_PAYMENT_METHODS.includes(method)) {
+      if (activeRate > 0) setValue("amount", (remainingUsd * activeRate).toFixed(2))
+    } else {
+      setValue("amount", remainingUsd.toFixed(2))
+    }
+  }, [paymentType, method, activeRate, remainingUsd, isEditing, setValue])
+
   // Inicializar formulario cuando se abre el modal
   useEffect(() => {
     if (open && members.length > 0 && plans.length > 0) {
@@ -168,6 +180,13 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
           payment_rate: ""
         })
       }
+
+      // Default del toggle: "Abono" si el cliente ya tiene saldo; si no, "Pago completo".
+      const initialMember = payment?.member_id
+        ? members.find((m: any) => m.id === payment.member_id)
+        : null
+      setPaymentType(Number(initialMember?.balance_due ?? 0) > 0 ? "installment" : "full")
+
       initialized.current = true
     }
   }, [open, members.length, plans.length, payment, isEditing, reset])
@@ -186,6 +205,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     setValue("member_id", value)
     if (!isEditing) {
       const member = members.find((m: any) => m.id === value)
+      setPaymentType(Number(member?.balance_due ?? 0) > 0 ? "installment" : "full")
       if (member?.plan_id) {
         setValue("plan_id", member.plan_id)
       }
@@ -219,7 +239,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   }
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => createPayment(data),
+    mutationFn: (data: any) => createPayment(data, { enforceFullPayment: paymentType === "full" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] })
       queryClient.invalidateQueries({ queryKey: ["payments-funds-summary"] })
@@ -331,8 +351,37 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
               <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
                 <p className="text-sm font-medium text-yellow-500">
                   Saldo pendiente: ${balanceDue.toFixed(2)}
+                  {activeRate > 0 && (
+                    <span className="font-normal text-yellow-500/80"> ≈ {formatBs(balanceDue * activeRate)}</span>
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground">Este cliente está abonando su mensualidad por partes.</p>
+              </div>
+            )}
+
+            {!isEditing && method !== "Solvencia sin ingreso" && (
+              <div className="grid gap-2">
+                <Label>Tipo de pago</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={paymentType === "full" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setPaymentType("full")}
+                  >
+                    Pago completo
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={paymentType === "installment" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setPaymentType("installment")}
+                  >
+                    Abono
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -343,6 +392,12 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
                   id="amount"
                   type="number"
                   step="0.01"
+                  readOnly={!isEditing && paymentType === "full" && method !== "Solvencia sin ingreso"}
+                  className={
+                    !isEditing && paymentType === "full" && method !== "Solvencia sin ingreso"
+                      ? "bg-muted/50"
+                      : undefined
+                  }
                   {...register("amount", { required: "El monto es requerido" })}
                   placeholder="0.00"
                 />
@@ -351,7 +406,9 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
                   <p className={`text-xs ${isOverpay ? "text-destructive" : "text-muted-foreground"}`}>
                     {isOverpay
                       ? `El abono supera el saldo de $${remainingUsd.toFixed(2)}`
-                      : `Este abono dejará un saldo de $${resultingBalanceUsd.toFixed(2)}`}
+                      : `Este abono dejará un saldo de $${resultingBalanceUsd.toFixed(2)}${
+                          activeRate > 0 ? ` ≈ ${formatBs(resultingBalanceUsd * activeRate)}` : ""
+                        }`}
                   </p>
                 )}
               </div>

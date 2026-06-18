@@ -81,3 +81,15 @@ export function calculateAge(birthDate: string | null | undefined): number | nul
   if (years < 0 || years > 120) return null
   return years
 }
+
+/**
+ * Formatea un monto en bolívares con el formato venezolano (Bs 7.830,00).
+ * Devuelve "Bs 0,00" para montos no válidos o no positivos.
+ */
+export function formatBs(amount: number): string {
+  if (!amount || amount <= 0 || Number.isNaN(amount)) return "Bs 0,00"
+  return `Bs ${amount.toLocaleString("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
