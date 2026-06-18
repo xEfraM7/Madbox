@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react"
 import { createPayment, updatePayment } from "@/lib/actions/payments"
 import { getMembers } from "@/lib/actions/members"
 import { getPlans } from "@/lib/actions/plans"
+import { toUsd, BS_PAYMENT_METHODS } from "@/lib/utils"
 
 interface PaymentFormModalProps {
   open: boolean
@@ -74,6 +75,8 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   const member_id = watch("member_id")
   const plan_id = watch("plan_id")
   const method = watch("method")
+  const amount = watch("amount")
+  const payment_rate = watch("payment_rate")
 
   const { data: members = [] } = useQuery({
     queryKey: ["members"],
@@ -86,6 +89,19 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
     queryFn: getPlans,
     enabled: open,
   })
+
+  const selectedMember = members.find((m: any) => m.id === member_id)
+  const selectedPlan = plans.find((p: any) => p.id === plan_id)
+
+  // El saldo se lleva en USD. Si el miembro tiene saldo, ese es el restante;
+  // si no, el restante es el precio del plan (abre periodo).
+  const balanceDue = Number(selectedMember?.balance_due ?? 0)
+  const planPriceUsd = Number(selectedPlan?.price ?? 0)
+  const remainingUsd = balanceDue > 0 ? balanceDue : planPriceUsd
+
+  const abonoUsd = toUsd(parseFloat(amount || "0"), method, parseFloat(payment_rate || "0"))
+  const resultingBalanceUsd = Math.max(0, remainingUsd - abonoUsd)
+  const isOverpay = abonoUsd > remainingUsd + 0.01
 
   const isEditing = payment?.id
 
@@ -139,13 +155,19 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   const handleMemberChange = (value: string) => {
     setValue("member_id", value)
     if (!isEditing) {
-      const selectedMember = members.find((m: any) => m.id === value)
-      if (selectedMember?.plan_id) {
-        setValue("plan_id", selectedMember.plan_id)
-        const memberPlan = plans.find((p: any) => p.id === selectedMember.plan_id)
-        if (memberPlan) {
-          setValue("amount", memberPlan.price.toString())
-        }
+      const member = members.find((m: any) => m.id === value)
+      if (member?.plan_id) {
+        setValue("plan_id", member.plan_id)
+      }
+      const memberPlan = plans.find((p: any) => p.id === member?.plan_id)
+      const pendingUsd = Number(member?.balance_due ?? 0)
+      const baseUsd = pendingUsd > 0 ? pendingUsd : Number(memberPlan?.price ?? 0)
+      // Para métodos en USD autollenamos directo; para Bs dejamos que el admin ingrese
+      // monto+tasa (el monto va en Bs y no podemos convertir sin tasa).
+      if (!BS_PAYMENT_METHODS.includes(method) && baseUsd > 0) {
+        setValue("amount", baseUsd.toFixed(2))
+      } else {
+        setValue("amount", "")
       }
     }
   }
@@ -191,16 +213,39 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   })
 
   const onSubmit = (data: FormData) => {
+    const amountNum = parseFloat(data.amount)
+    const rateNum = data.payment_rate ? parseFloat(data.payment_rate) : null
+
+    // Abono en Bs requiere tasa para poder convertir el saldo a USD.
+    if (BS_PAYMENT_METHODS.includes(data.method) && (!rateNum || rateNum <= 0)) {
+      showToast.error("Falta la tasa", "Ingresa la tasa Bs/USD para registrar un abono en bolívares.")
+      return
+    }
+
+    // Sobrepago: avisar y topar al saldo (no se permite guardar de más).
+    const thisAbonoUsd = toUsd(amountNum, data.method, rateNum)
+    if (data.method !== "Solvencia sin ingreso" && remainingUsd > 0 && thisAbonoUsd > remainingUsd + 0.01) {
+      const cappedAmount = BS_PAYMENT_METHODS.includes(data.method) && rateNum
+        ? remainingUsd * rateNum
+        : remainingUsd
+      setValue("amount", cappedAmount.toFixed(2))
+      showToast.error(
+        "Monto mayor al saldo",
+        `El saldo pendiente es $${remainingUsd.toFixed(2)}. Ajustamos el monto al máximo permitido.`,
+      )
+      return
+    }
+
     const paymentData = {
       member_id: data.member_id,
       plan_id: data.plan_id,
-      amount: parseFloat(data.amount),
+      amount: amountNum,
       method: data.method,
       reference: METHODS_WITH_REFERENCE.includes(data.method) ? data.reference : null,
       status: "paid",
       payment_date: data.payment_date || null,
       due_date: data.due_date,
-      payment_rate: METHODS_IN_BS.includes(data.method) && data.payment_rate ? parseFloat(data.payment_rate) : null
+      payment_rate: METHODS_IN_BS.includes(data.method) && data.payment_rate ? parseFloat(data.payment_rate) : null,
     }
 
     if (isEditing) {
@@ -247,6 +292,15 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
               </Select>
             </div>
 
+            {balanceDue > 0 && (
+              <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+                <p className="text-sm font-medium text-yellow-500">
+                  Saldo pendiente: ${balanceDue.toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground">Este cliente está abonando su mensualidad por partes.</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="amount">Monto</Label>
@@ -258,6 +312,13 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
                   placeholder="0.00"
                 />
                 {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
+                {remainingUsd > 0 && parseFloat(amount || "0") > 0 && (
+                  <p className={`text-xs ${isOverpay ? "text-destructive" : "text-muted-foreground"}`}>
+                    {isOverpay
+                      ? `El abono supera el saldo de $${remainingUsd.toFixed(2)}`
+                      : `Este abono dejará un saldo de $${resultingBalanceUsd.toFixed(2)}`}
+                  </p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="method">Método de pago</Label>
