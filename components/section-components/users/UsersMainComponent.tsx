@@ -79,7 +79,12 @@ export default function UsersMainComponent() {
 
   const filteredClients = clients.filter((client: any) => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) || client.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || client.status === statusFilter
+    const matchesStatus =
+      statusFilter === "all"
+        ? true
+        : statusFilter === "debtors"
+          ? Number(client.balance_due) > 0
+          : client.status === statusFilter
     const matchesPlan = planFilter === "all" || client.plans?.name === planFilter
     return matchesSearch && matchesStatus && matchesPlan
   })
@@ -112,6 +117,7 @@ export default function UsersMainComponent() {
                   <SelectItem value="active">Activo</SelectItem>
                   <SelectItem value="frozen">Congelado</SelectItem>
                   <SelectItem value="expired">Vencido</SelectItem>
+                  <SelectItem value="debtors">Deudores</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={planFilter} onValueChange={setPlanFilter}>
@@ -165,7 +171,14 @@ export default function UsersMainComponent() {
                           </TableCell>
                           <TableCell className="hidden sm:table-cell text-muted-foreground">{client.email}</TableCell>
                           <TableCell className="hidden md:table-cell"><Badge variant="outline">{client.plans?.name || "Sin plan"}</Badge></TableCell>
-                          <TableCell><Badge variant={statusConfig[client.status as keyof typeof statusConfig]?.variant || "secondary"}>{statusConfig[client.status as keyof typeof statusConfig]?.label || client.status}</Badge></TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Badge variant={statusConfig[client.status as keyof typeof statusConfig]?.variant || "secondary"}>{statusConfig[client.status as keyof typeof statusConfig]?.label || client.status}</Badge>
+                              {Number(client.balance_due) > 0 && (
+                                <Badge variant="outline" className="border-yellow-500/40 text-yellow-500">Debe ${Number(client.balance_due).toFixed(2)}</Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
