@@ -49,6 +49,26 @@ export function isDayClosed(openTime: string | null, closeTime: string | null): 
   return openTime === closeTime
 }
 
+export const BS_PAYMENT_METHODS: readonly string[] = ["Pago Movil", "Efectivo bs", "Transferencia BS"]
+
+/**
+ * Convierte un monto al equivalente en USD.
+ * Métodos en Bs requieren payment_rate (Bs/USD); sin tasa devuelve 0.
+ * Métodos en USD/USDT devuelven el monto tal cual.
+ */
+export function toUsd(
+  amount: number,
+  method: string | null | undefined,
+  rate: number | null | undefined,
+): number {
+  if (!amount || amount <= 0) return 0
+  if (method && BS_PAYMENT_METHODS.includes(method)) {
+    if (!rate || rate <= 0) return 0
+    return amount / rate
+  }
+  return amount
+}
+
 /**
  * Calcula edad en años redondeados desde una fecha de nacimiento (string ISO YYYY-MM-DD).
  * Devuelve null si la fecha es inválida o futura.
