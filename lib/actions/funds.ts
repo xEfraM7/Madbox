@@ -24,6 +24,22 @@ export async function getExchangeRates() {
   return data
 }
 
+// Tasa vigente en una fecha dada (YYYY-MM-DD): la última conocida en o antes de ese día.
+export async function getRateOnDate(type: string, date: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("exchange_rate_history")
+    .select("rate, date")
+    .eq("type", type)
+    .lte("date", date)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  return data?.rate ?? null
+}
+
 export async function updateExchangeRate(type: string, rate: number) {
   const supabase = await createClient()
   const { error } = await supabase

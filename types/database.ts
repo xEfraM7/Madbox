@@ -99,6 +99,24 @@ export type Database = {
           },
         ]
       }
+      exchange_rate_history: {
+        Row: {
+          date: string
+          rate: number
+          type: string
+        }
+        Insert: {
+          date: string
+          rate: number
+          type: string
+        }
+        Update: {
+          date?: string
+          rate?: number
+          type?: string
+        }
+        Relationships: []
+      }
       exchange_rates: {
         Row: {
           id: string

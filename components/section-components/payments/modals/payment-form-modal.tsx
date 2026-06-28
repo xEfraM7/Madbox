@@ -15,7 +15,7 @@ import { Loader2 } from "lucide-react"
 import { createPayment, updatePayment } from "@/lib/actions/payments"
 import { getMembers } from "@/lib/actions/members"
 import { getPlans } from "@/lib/actions/plans"
-import { getExchangeRates } from "@/lib/actions/funds"
+import { getExchangeRates, getRateOnDate } from "@/lib/actions/funds"
 import { toUsd, BS_PAYMENT_METHODS, formatBs } from "@/lib/utils"
 
 interface PaymentFormModalProps {
@@ -80,6 +80,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
   const method = watch("method")
   const amount = watch("amount")
   const payment_rate = watch("payment_rate")
+  const payment_date = watch("payment_date")
 
   const { data: members = [] } = useQuery({
     queryKey: ["members"],
@@ -101,7 +102,21 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
 
   const bcvRate = Number(exchangeRates.find((r: any) => r.type === "BCV")?.rate ?? 0)
   const usdtRate = Number(exchangeRates.find((r: any) => r.type === "USDT")?.rate ?? 0)
-  const activeRate = rateType === "bcv" ? bcvRate : usdtRate
+  const selectedRate = rateType === "bcv" ? bcvRate : usdtRate
+
+  // Si la fecha de pago es un día pasado, convertir Bs↔USD con la tasa de ESE día (histórico),
+  // no la de hoy. Resuelve "el dinero entró el martes pero lo registro el viernes".
+  const todayStr = new Date().toISOString().split("T")[0]
+  const isPastDate = !!payment_date && payment_date < todayStr
+  const { data: histRate } = useQuery({
+    queryKey: ["rate-on-date", rateType, payment_date],
+    queryFn: () => getRateOnDate(rateType === "bcv" ? "BCV" : "USDT", payment_date),
+    enabled: open && isPastDate,
+  })
+  const historicalRate = Number(histRate ?? 0)
+  // ponytail: si no hay histórico de ese día, cae a la tasa de hoy.
+  const usingHistoricalRate = isPastDate && historicalRate > 0
+  const activeRate = usingHistoricalRate ? historicalRate : selectedRate
 
   const selectedMember = members.find((m: any) => m.id === member_id)
   const selectedPlan = plans.find((p: any) => p.id === plan_id)
@@ -465,6 +480,7 @@ export function PaymentFormModal({ open, onOpenChange, payment }: PaymentFormMod
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Tasa aplicada: {activeRate > 0 ? `${activeRate.toFixed(2)} Bs/USD` : "Sin tasa disponible"}
+                  {usingHistoricalRate && <span className="text-yellow-500/80"> (histórica del {payment_date})</span>}
                 </p>
               </div>
             )}
